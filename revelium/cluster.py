@@ -3,77 +3,69 @@ import json
 import asyncio
 import numpy as np
 
-from smartscan import ItemEmbedding
-from smartscan.utils import chunk_text
-from smartscan.embeddings import generate_prototype_embedding
-from smartscan.cluster import IncrementalClusterer
-from smartscan.processor import BatchProcessor, ProcessorListener
-from smartscan.providers import TextEmbeddingProvider, MiniLmTextEmbedder
-from server.constants import MINILM_MODEL_PATH
-from const import physics_sentences, quantum_mechanics_sentences, btc_analysis, forex_analysis, long_physics_sentences, long_btc_analysis, long_forex_analysis
 from revelium.utils import with_time
+from revelium.data import get_prompts
+from smartscan import Prototype
+from revelium.indexer import PromptIndexer, DefaultPromptIndexerListener
+from smartscan.cluster import IncrementalClusterer
+from smartscan.providers import  MiniLmTextEmbedder
+from server.constants import MINILM_MODEL_PATH
+
 
 random.seed(32)
 
-class TextIndexerListener(ProcessorListener[tuple[str, str], ItemEmbedding]):
-    def on_error(self, e, item):
-        print(e)
 
-class TextIndexer(BatchProcessor[tuple[str, str], ItemEmbedding]):
-    def __init__(self, 
-                text_encoder: TextEmbeddingProvider,
-                max_tokenizer_length: int,
-                max_chunks: int | None = None,
-                **kwargs
-                ):
-        super().__init__(**kwargs)
-        self.text_encoder = text_encoder
-        self.max_chunks = max_chunks
-        self.max_tokenizer_length = max_tokenizer_length
-        self.item_embeddings = []
+def compare_clusters(prototypes: dict[str, Prototype], merge_threshold: float = 0.9, verbose:bool = False) ->  dict[str, list[str]]:
+    cluster_merges: dict[str, list[str]] = {}
+    p_ids, p_embeds =  zip(*((p.prototype_id, p.embedding) for p in prototypes.values()))
 
-    # All chunks share the same item_id (url or file) so that chunks are group
-    # In the on_batch_complete method, the listener can handle use it as metaddata and assign unique ids to each chunk if required
-    def on_process(self, item):
-        chunks = chunk_text(item[1], self.max_tokenizer_length)
-        embeddings = self.text_encoder.embed_batch(chunks)
-        text_prototype = generate_prototype_embedding(embeddings)
-        return ItemEmbedding(item[0], text_prototype)
-             
-    # delegate to lister e.g to handle storage
-    async def on_batch_complete(self, batch):
-        self.item_embeddings.extend( batch)
+    for idx, emb in enumerate(p_embeds):
+        # compute dot product similarity with all embeddings
+        sims = np.dot(p_embeds, emb)
+        # exclude self-similarity
+        sims_no_self = np.delete(sims, idx)
+        if verbose: print(f"Embedding {p_ids[idx]} similarities with others: {sims_no_self}")
         
+        merge_cluster_id_indices = [int(np.where(sims_no_self == sim)[0][0]) for sim in sims_no_self if sim > merge_threshold]  
+        if(len(merge_cluster_id_indices)) > 0:
+            cluster_merges[p_ids[idx]] = [p_ids[cluster_idx] for cluster_idx in merge_cluster_id_indices]
+    
+    return cluster_merges
 
-def arr_with_id(arr: list[str], id_prefix: str) -> list[tuple[str, str]]:
-    return [(f"{id_prefix}_{idx}", item) for idx, item in enumerate(arr)]
+def merge_clusters(cluster_merges: dict[str, list[str]], assignments: dict[str, str]):
+    for item_id, assigned_cluster_id in assignments.items():
+        for merge_cluster_id, cluster_ids_to_merge in cluster_merges.items():
+            if assigned_cluster_id in cluster_ids_to_merge:
+                assignments[item_id] = merge_cluster_id
+    return assignments
 
-
-async def main_clster():
+async def main():
     text_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH)
     text_embedder.init()
-    all_data: list[tuple[str, str]] = []
-    all_data.extend(arr_with_id(long_physics_sentences, "physics"))
-    all_data.extend(arr_with_id(quantum_mechanics_sentences, "quantum"))
-    all_data.extend(arr_with_id(long_btc_analysis, "btc"))
-    all_data.extend(arr_with_id(long_forex_analysis, "forex"))
 
-    indexer = TextIndexer(text_embedder, 512, listener=TextIndexerListener())
-    result = await indexer.run(all_data)
+    # Indexer
+    indexer = PromptIndexer(text_embedder, 512, listener=DefaultPromptIndexerListener())
+    prompts = get_prompts() # dev only placeholder
+    result = await indexer.run(prompts)
     print(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
+
+    # Clustering
     cluster_manager = IncrementalClusterer(default_threshold=0.35, sim_factor=0.8)
     prototypes, assignments = cluster_manager.cluster(indexer.item_embeddings)
-    p_embeds = [p.embedding for p in prototypes.values()]
    
-    # for i, emb in enumerate(p_embeds):
-    #     # compute dot product similarity with all embeddings
-    #     sims = np.dot(p_embeds, emb)
-    #     # exclude self-similarity
-    #     sims_no_self = np.delete(sims, i)
-    #     print(f"Embedding {i} similarities with others: {sims_no_self}")
+    # Analysis
+    p_ids, p_embeds =  zip(*((p.prototype_id, p.embedding) for p in prototypes.values()))
+    cluster_merges = compare_clusters(prototypes)    
         
-    with open("assignments_long.json", "w") as f:
+    with open("output/assignments_long.json", "w") as f:
+        json.dump(dict(sorted(assignments.items())), f, indent=1)
+
+    assignments = merge_clusters(cluster_merges, assignments)
+
+    with open("output/merged.json", "w") as f:
         json.dump(dict(sorted(assignments.items())), f, indent=1)
 
 
-asyncio.run(main_clster())
+
+
+asyncio.run(main())
