@@ -12,3 +12,11 @@ def get_prompts() -> list[tuple[str, str]]:
     all_data.extend(arr_with_id(long_btc_analysis, "btc"))
     all_data.extend(arr_with_id(long_forex_analysis, "forex"))
     return all_data
+
+def get_label_counts():
+    labels_count: dict[str, int] = {}
+    labels_count["physics"] = len(long_physics_sentences)
+    labels_count["quantum"] = len(quantum_mechanics_sentences)
+    labels_count["btc"] = len(long_btc_analysis)
+    labels_count["forex"] = len(long_forex_analysis)
+    return labels_count
