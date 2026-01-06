@@ -1,12 +1,8 @@
-import random
-
 from smartscan import ItemEmbedding
 from smartscan.utils import chunk_text
 from smartscan.embeddings import generate_prototype_embedding
 from smartscan.processor import BatchProcessor, ProcessorListener
 from smartscan.providers import TextEmbeddingProvider
-
-random.seed(32)
 
 class PromptIndexer(BatchProcessor[tuple[str, str], ItemEmbedding]):
     def __init__(self, 
