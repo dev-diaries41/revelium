@@ -17,7 +17,7 @@ def with_time(func):
         start = time.perf_counter()
         result = func(*args, **kwargs)
         time_elapsed = time.perf_counter() - start
-        print(f" Time elapsed: {time_elapsed:.3f} s")
+        print(f" Time elapsed: {time_elapsed:.6f} s")
         return result
     return wrapper
 
