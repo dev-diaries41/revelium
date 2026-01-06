@@ -1,0 +1,14 @@
+# Dirs
+config/
+__pycache__/
+venv/
+db/
+smartscan.json
+build/
+*.egg-info
+output/
+models/
+
+# Files
+*.onnx
+
