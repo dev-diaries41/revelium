@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Literal
 import aiosqlite
 import asyncio
 from datetime import datetime
@@ -38,7 +38,7 @@ class AsyncSQLitePromptStore(PromptStore):
         created_before: Optional[datetime] = None,
         updated_after: Optional[datetime] = None,
         updated_before: Optional[datetime] = None,
-        order_by: str = "prompt_id",        # default ordering
+        order_by: Literal["created_at", "updated_at", "prompt_id"] = "created_at",
         ascending: bool = True  
     ) -> List[Prompt]:
         """Retrieve prompts with optional pagination, cluster, and timestamp filters."""
@@ -94,7 +94,7 @@ class AsyncSQLitePromptStore(PromptStore):
                     (
                         p.content,
                         p.cluster_id,
-                        p.updated_at.isoformat() if p.updated_at else datetime.utcnow().isoformat(),
+                        p.updated_at if p.updated_at else datetime.now(datetime.timezone.utc),
                         p.prompt_id,
                     )
                     for p in items
