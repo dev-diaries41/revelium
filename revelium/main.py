@@ -7,7 +7,7 @@ from revelium.data import get_placeholder_prompts, get_label_counts, generate_te
 from revelium.prompts.prompt_indexer import PromptIndexer, DefaultPromptIndexerListener
 from revelium.prompts.store import PromptStore, AsyncSQLitePromptStore
 
-from smartscan.cluster.cluster_analysis import calculate_cluster_accuracy, merge_clusters, count_predicted_labels, compare_clusters
+from smartscan.cluster.analysis import calculate_cluster_accuracy, merge_clusters, count_predicted_labels, compare_clusters
 from smartscan.cluster.incremental_clusterer import IncrementalClusterer
 from smartscan.providers import  MiniLmTextEmbedder
 
@@ -19,7 +19,7 @@ from server.constants import MINILM_MODEL_PATH
 random.seed(32)
 
 async def main():
-    text_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH)
+    text_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH, 512)
     text_embedder.init()
 
     prompt_store = AsyncSQLitePromptStore()
