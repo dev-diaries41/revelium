@@ -3,7 +3,7 @@ import json
 import asyncio
 
 from revelium.utils import with_time
-from revelium.data import get_prompts, get_label_counts, generate_test_clusters
+from revelium.data import get_placeholder_prompts, get_label_counts, generate_test_clusters
 from revelium.prompts.prompt_indexer import PromptIndexer, DefaultPromptIndexerListener
 from revelium.prompts.store import PromptStore, AsyncSQLitePromptStore
 
@@ -25,7 +25,7 @@ async def main():
     prompt_store = AsyncSQLitePromptStore()
     count = await prompt_store.count()
     if count == 0:
-        prompts = get_prompts() # dev only placeholder
+        prompts = get_placeholder_prompts() # dev only placeholder
         await prompt_store.add(prompts)
     else:
         prompts = await prompt_store.get(limit=500, order_by="created_at")

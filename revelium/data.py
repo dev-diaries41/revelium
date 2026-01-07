@@ -6,7 +6,7 @@ from revelium.prompts.types import Prompt
 def strings_to_prompts(arr: list[str], id_prefix: str) -> list[Prompt]:
     return [Prompt(prompt_id=f"{id_prefix}_{idx}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
 
-def get_prompts() -> list[Prompt]:
+def get_placeholder_prompts() -> list[Prompt]:
     all_data: list[Prompt] = []
     all_data.extend(strings_to_prompts(long_physics_sentences, "physics"))
     all_data.extend(strings_to_prompts(quantum_mechanics_sentences, "quantum"))
