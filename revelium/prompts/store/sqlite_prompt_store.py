@@ -84,6 +84,33 @@ class AsyncSQLitePromptStore(PromptStore):
                 )
                 for row in rows
             ]
+    async def update(self, items: List[Prompt]) -> None:
+        if not items:
+            return
+        await self._init_db()
+        async with self._lock:
+            async with aiosqlite.connect(self.db_path) as db:
+                data = [
+                    (
+                        p.content,
+                        p.cluster_id,
+                        p.updated_at.isoformat() if p.updated_at else datetime.utcnow().isoformat(),
+                        p.prompt_id,
+                    )
+                    for p in items
+                ]
+                await db.executemany(
+                    """
+                    UPDATE prompts
+                    SET content = ?,
+                        cluster_id = ?,
+                        updated_at = ?
+                    WHERE prompt_id = ?
+                    """,
+                    data,
+                )
+                await db.commit()
+
 
     async def get_by_ids(self, ids: List[str]) -> List[Prompt]:
         if not ids:
