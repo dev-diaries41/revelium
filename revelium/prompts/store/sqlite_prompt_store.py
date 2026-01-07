@@ -170,10 +170,43 @@ class AsyncSQLitePromptStore(PromptStore):
                 await db.execute(query, ids)
                 await db.commit()
 
-    async def count(self) -> int:
+    # async def count(self) -> int:
+    #     await self._init_db()
+    #     async with aiosqlite.connect(self.db_path) as db:
+    #         cursor = await db.execute("SELECT COUNT(*) FROM prompts")
+    #         (total,) = await cursor.fetchone()
+    #         await cursor.close()
+    #         return total
+        
+    async def count(self, 
+                    cluster_id: Optional[str] = None,
+                    created_after: Optional[datetime] = None,
+                    created_before: Optional[datetime] = None,
+                    updated_after: Optional[datetime] = None,
+                    updated_before: Optional[datetime] = None,) -> int:
         await self._init_db()
         async with aiosqlite.connect(self.db_path) as db:
-            cursor = await db.execute("SELECT COUNT(*) FROM prompts")
+            query = "SELECT COUNT(*) FROM prompts WHERE 1=1"
+            params = []
+
+            if cluster_id is not None:
+                query += " AND cluster_id = ?"
+                params.append(cluster_id)
+
+            if created_after:
+                query += " AND created_at >= ?"
+                params.append(created_after.isoformat())
+            if created_before:
+                query += " AND created_at <= ?"
+                params.append(created_before.isoformat())
+            if updated_after:
+                query += " AND updated_at >= ?"
+                params.append(updated_after.isoformat())
+            if updated_before:
+                query += " AND updated_at <= ?"
+                params.append(updated_before.isoformat())
+            cursor = await db.execute(query, params)
             (total,) = await cursor.fetchone()
             await cursor.close()
             return total
+
