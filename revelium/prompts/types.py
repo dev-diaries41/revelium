@@ -7,5 +7,5 @@ class Prompt:
     prompt_id: str
     content: str
     cluster_id: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(datetime.timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now())
     updated_at: Optional[datetime] = None
