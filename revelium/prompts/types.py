@@ -6,5 +6,6 @@ from typing import Optional
 class Prompt:
     prompt_id: str
     content: str
-    created_at: datetime = field(default_factory=datetime.now(datetime.timezone.utc))
+    cluster_id: Optional[str] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(datetime.timezone.utc))
     updated_at: Optional[datetime] = None
