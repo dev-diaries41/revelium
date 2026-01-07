@@ -4,7 +4,7 @@ import asyncio
 
 from revelium.utils import with_time
 from revelium.data import get_prompts, get_label_counts, generate_test_clusters
-from revelium.indexer import PromptIndexer, DefaultPromptIndexerListener
+from revelium.prompts.prompt_indexer import PromptIndexer, DefaultPromptIndexerListener
 from revelium.prompts.store import PromptStore, AsyncSQLitePromptStore
 
 from smartscan.cluster.cluster_analysis import calculate_cluster_accuracy, merge_clusters, count_predicted_labels, compare_clusters
