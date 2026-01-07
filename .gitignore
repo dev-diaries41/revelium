@@ -11,4 +11,5 @@ models/
 
 # Files
 *.onnx
+TODO.md
 
