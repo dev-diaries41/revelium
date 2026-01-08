@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from dataclasses import asdict
 from smartscan.providers import  MiniLmTextEmbedder, TextEmbeddingProvider
-from revelium.prompts.prompt_indexer import PromptIndexer, DefaultPromptIndexerListener
+from revelium.prompts.indexer import PromptIndexer, DefaultPromptIndexerListener
 from revelium.prompts.store import AsyncSQLitePromptStore, PromptStore
 from revelium.prompts.types import Prompt
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
@@ -40,7 +40,7 @@ async def run(labelled_prompts: list[Prompt], embedders: dict[str, TextEmbedding
         collection_name = get_collection_name(model, embedder.embedding_dim)
         collection = client.get_or_create_collection(name=collection_name)
         embedding_store = ChromaDBEmbeddingStore(collection)
-        indexer = PromptIndexer(embedder, embedder._max_len, listener=DefaultPromptIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store, batch_size=50, max_concurrency=4)
+        indexer = PromptIndexer(embedder, embedder._max_len, listener=DefaultPromptIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store, batch_size=100, max_concurrency=4)
         result =  await indexer.run(labelled_prompts)
         results[model] = {k: v for k, v in asdict(result).items() if k != "error"}
         print(f"{model}_result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
@@ -55,4 +55,4 @@ async def main(labelled_prompts: list[Prompt]):
     minilm_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH, 512)
     await run(labelled_prompts, {"minilm": minilm_embedder})
 
-asyncio.run(main(get_placeholder_prompts()))
+asyncio.run(main(get_placeholder_prompts(1000)))
