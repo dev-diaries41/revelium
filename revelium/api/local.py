@@ -11,7 +11,7 @@ from revelium.tokens import embedding_token_cost
 
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  TextEmbeddingProvider
-from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ModelName
+from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, ModelName
 from smartscan.embeds import EmbeddingStore
 
 ## DEV ONLY
@@ -95,12 +95,8 @@ class ReveliumLocalClient():
         self.embedding_store.upsert(cluster_embeddings)
 
 
-    def calculate_cluster_accuracy(self, labelled_cluster_counts: Dict[str, int]):
-        cluster_ids = labelled_cluster_counts.keys()
-        predict_count = {}
-        for cluster_id in cluster_ids:
-            predict_count[cluster_id] = self.prompt_store.count(cluster_id=cluster_id)
-        return calculate_cluster_accuracy(labelled_cluster_counts, predict_count)
+    def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments):
+        return calculate_cluster_accuracy(true_labels, predicted_clusters)
     
     def calculate_prompt_cost(self, prompt: Prompt, price_per_1m_tokens: float, model: str | ModelName):
         return embedding_token_cost(prompt.content, price_per_1m_tokens, model)
