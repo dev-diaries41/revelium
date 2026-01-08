@@ -1,6 +1,6 @@
 from smartscan import ItemEmbedding
 from smartscan.media import chunk_text
-from smartscan.embeds import generate_prototype_embedding
+from smartscan.embeds import generate_prototype_embedding, EmbeddingStore
 from smartscan.processor import BatchProcessor, ProcessorListener
 from smartscan.providers import TextEmbeddingProvider
 from revelium.prompts.store import PromptStore
@@ -11,6 +11,7 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
                 text_encoder: TextEmbeddingProvider,
                 max_tokenizer_length: int,
                 prompt_store: PromptStore,
+                embeddings_store: EmbeddingStore,
                 max_chunks: int | None = None,
                 **kwargs
                 ):
@@ -18,8 +19,8 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
         self.text_encoder = text_encoder
         self.max_chunks = max_chunks
         self.max_tokenizer_length = max_tokenizer_length
-        self.item_embeddings = []
         self.prompt_store = prompt_store
+        self.embeddings_store = embeddings_store
 
     # All chunks share the same item_id (url or file) so that chunks are group
     # In the on_batch_complete method, the listener can handle use it as metaddata and assign unique ids to each chunk if required
@@ -29,11 +30,11 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
         text_prototype = generate_prototype_embedding(embeddings)
         return ItemEmbedding(item.prompt_id, text_prototype)
              
-    # TODO: add to EmbeddingStore
     async def on_batch_complete(self, batch):
-        self.item_embeddings.extend( batch)
+        self.embeddings_store.add(batch)
         
-
 class DefaultPromptIndexerListener(ProcessorListener[Prompt, ItemEmbedding]):
     def on_error(self, e, item):
         print(e)
+    def on_fail(self, result):
+        return print(result.error)
