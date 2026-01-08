@@ -12,16 +12,15 @@ from revelium.data import get_placeholder_prompts
 from revelium.prompts.types import Prompt
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.utils.decorators import with_time
-from revelium.utils.file import get_new_filename
 
 from server.constants import MINILM_MODEL_PATH, DB_DIR
-
-## DEV ONLY
 
 random.seed(32)
 
 BENCHMARK_DIR = "output/benchmarks"
-FILENAME = "cluster_accuracy.jsonl"
+BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "cluster_accuracy.jsonl")
+os.makedirs(BENCHMARK_DIR, exist_ok=True)
+
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
@@ -44,7 +43,7 @@ def main(labelled_prompts: list[Prompt]):
     acc_info = calculate_cluster_accuracy(true_labels, result.assignments)
 
     os.makedirs(BENCHMARK_DIR, exist_ok=True)
-    with open(os.path.join(BENCHMARK_DIR, FILENAME), "a") as f:
+    with open(BENCHMARK_OUTPUT_PATH, "a") as f:
         f.write(json.dumps(asdict(acc_info), indent=None) + "\n")
 
     print(acc_info)

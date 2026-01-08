@@ -1,4 +1,3 @@
-import random
 import json
 import chromadb
 import asyncio
@@ -10,17 +9,16 @@ from revelium.prompts.prompt_indexer import PromptIndexer, DefaultPromptIndexerL
 from revelium.prompts.store import AsyncSQLitePromptStore
 from revelium.prompts.types import Prompt
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
-from revelium.utils.file import get_new_filename
 from revelium.data import get_placeholder_prompts
 
 from server.constants import MINILM_MODEL_PATH, DB_DIR
 
-## DEV ONLY
-
-random.seed(32)
 
 BENCHMARK_DIR = "output/benchmarks"
-FILENAME = "indexing_speed.jsonl"
+BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_speed.jsonl")
+BENCHMARK_PROMPT_STORE_PATH = os.join(BENCHMARK_DIR, "prompts.db")
+os.makedirs(BENCHMARK_DIR, exist_ok=True)
+
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
 async def main(labelled_prompts: list[Prompt]):
@@ -32,13 +30,12 @@ async def main(labelled_prompts: list[Prompt]):
     embedding_store = ChromaDBEmbeddingStore(collection)
     indexer = PromptIndexer(text_embedder, 512, listener=DefaultPromptIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store)
     
-    result = await indexer.run(labelled_prompts)
+    index_results = await indexer.run(labelled_prompts)
     print(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
-    result = {k: v for k, v in asdict(result).items() if k != "error"}
+    result = {k: v for k, v in asdict(index_results).items() if k != "error"}
 
-    os.makedirs(BENCHMARK_DIR, exist_ok=True)
-    with open(os.path.join(BENCHMARK_DIR, FILENAME), "a") as f:
+    with open(BENCHMARK_OUTPUT_PATH, "a") as f:
         f.write(json.dumps(result, indent=None) + "\n")
 
 
