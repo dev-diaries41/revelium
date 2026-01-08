@@ -1,18 +1,17 @@
 import random
 import json
 import chromadb
+import asyncio
 import os
 
 from dataclasses import asdict
-from smartscan import  ItemId
-from smartscan.classify import IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
-
-from revelium.data import get_placeholder_prompts
+from revelium.prompts.prompt_indexer import PromptIndexer, DefaultPromptIndexerListener
+from revelium.prompts.store import AsyncSQLitePromptStore
 from revelium.prompts.types import Prompt
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
-from revelium.utils.decorators import with_time
 from revelium.utils.file import get_new_filename
+from revelium.data import get_placeholder_prompts
 
 from server.constants import MINILM_MODEL_PATH, DB_DIR
 
@@ -21,32 +20,26 @@ from server.constants import MINILM_MODEL_PATH, DB_DIR
 random.seed(32)
 
 BENCHMARK_DIR = "output/benchmarks"
-FILENAME = "cluster_accuracy.jsonl"
-
+FILENAME = "indexing_speed.jsonl"
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-@with_time
-def main(labelled_prompts: list[Prompt]):
+async def main(labelled_prompts: list[Prompt]):
     text_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH, 512)
     text_embedder.init()
     client = chromadb.PersistentClient(path=DB_DIR, settings=chromadb.Settings(anonymized_telemetry=False))
+    prompt_store = AsyncSQLitePromptStore("db/prompts.db")
     collection = client.get_or_create_collection(name=f"cluster_collection", metadata={"description": "Cluster Collection"})
     embedding_store = ChromaDBEmbeddingStore(collection)
-    clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.8, benchmarking=True)
+    indexer = PromptIndexer(text_embedder, 512, listener=DefaultPromptIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store)
     
-    true_labels: dict[ItemId, str] = {}
-    for p in labelled_prompts:
-        true_labels[p.prompt_id] = p.prompt_id.split("_")[0]
-    
-    item_ids = [str(item_id) for item_id in true_labels.keys()]
-    query_result = embedding_store.get(ids=item_ids, include=['embeddings', 'metadatas'])
-    result = clusterer.cluster(query_result.ids, query_result.embeddings)
-    acc_info = calculate_cluster_accuracy(true_labels, result.assignments)
+    result = await indexer.run(labelled_prompts)
+    print(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
+
+    result = {k: v for k, v in asdict(result).items() if k != "error"}
 
     os.makedirs(BENCHMARK_DIR, exist_ok=True)
     with open(os.path.join(BENCHMARK_DIR, FILENAME), "a") as f:
-        f.write(json.dumps(asdict(acc_info), indent=None) + "\n")
+        f.write(json.dumps(result, indent=None) + "\n")
 
-    print(acc_info)
 
-main(get_placeholder_prompts())
+asyncio.run(main(get_placeholder_prompts()))
