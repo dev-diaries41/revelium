@@ -3,8 +3,8 @@ import string
 from placeholder_data import physics_sentences, quantum_mechanics_sentences, btc_analysis, forex_analysis, long_physics_sentences, long_btc_analysis, long_forex_analysis
 from revelium.prompts.types import Prompt
 ## DEV ONLY placeholders for getting data to cluster
-def strings_to_prompts(arr: list[str], id_prefix: str) -> list[Prompt]:
-    return [Prompt(prompt_id=f"{id_prefix}_{idx}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
+def strings_to_prompts(arr: list[str], label_prefix: str) -> list[Prompt]:
+    return [Prompt(prompt_id=f"{label_prefix}_{idx}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
 
 def get_placeholder_prompts() -> list[Prompt]:
     all_data: list[Prompt] = []
