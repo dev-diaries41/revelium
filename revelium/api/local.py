@@ -68,9 +68,32 @@ class ReveliumLocalClient():
         await self.prompt_store.update(updated_prompts)
 
 
-    def update_clusters(self, clusters: Dict[str, BaseCluster]):
-        cluster_embeddings = [ItemEmbedding[Any, ClusterMetadata](c.prototype_id, c.embedding, metadata=asdict(c.metadata)) for c in clusters.values()]
+    def update_clusters(self, clusters: Dict[str, BaseCluster], merges: ClusterMerges | None = None):
+        """
+        Update the embedding store with clusters, applying merges if provided.
+        Old clusters that have been merged are removed from the store.
+        """
+        effective_clusters: Dict[str, BaseCluster] = clusters.copy()
+
+        if merges:
+            merged_ids = {cid for targets in merges.values() for cid in targets}
+            for mid in merged_ids:
+                effective_clusters.pop(mid, None)  # remove merged-away clusters
+
+        cluster_embeddings = [
+            ItemEmbedding[Any, ClusterMetadata](
+                c.prototype_id,
+                c.embedding,
+                metadata=asdict(c.metadata)
+            )
+            for c in effective_clusters.values()
+        ]
+
+        if merges:
+            self.embedding_store.delete(list(merged_ids))
+
         self.embedding_store.upsert(cluster_embeddings)
+
 
     def calculate_cluster_accuracy(self, labelled_cluster_counts: Dict[str, int]):
         cluster_ids = labelled_cluster_counts.keys()
