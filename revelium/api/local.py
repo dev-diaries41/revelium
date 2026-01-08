@@ -78,13 +78,13 @@ class ReveliumLocalClient():
         if merges:
             merged_ids = {cid for targets in merges.values() for cid in targets}
             for mid in merged_ids:
-                effective_clusters.pop(mid, None)  # remove merged-away clusters
+                effective_clusters.pop(mid, None)
 
         cluster_embeddings = [
             ItemEmbedding[Any, ClusterMetadata](
                 c.prototype_id,
                 c.embedding,
-                metadata=asdict(c.metadata)
+                metadata={**asdict(c.metadata), "label": c.label}  # include label in stored metadata
             )
             for c in effective_clusters.values()
         ]
