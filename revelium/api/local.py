@@ -11,7 +11,7 @@ from revelium.tokens import embedding_token_cost
 
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  TextEmbeddingProvider
-from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ModelName
+from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ModelName
 from smartscan.embeds import EmbeddingStore
 
 ## DEV ONLY
@@ -37,11 +37,36 @@ class ReveliumLocalClient():
     def cluster(self, ids: List[str], embeddings: List[ndarray]):
         return self.clusterer.cluster(ids, embeddings)
                
-    async def update_prompts(self, assignments: Assignments):
+    async def update_prompts(self, assignments: Assignments, merges: ClusterMerges):
         prompt_ids = [str(k) for k in assignments.keys()]
         prompts = await self.prompt_store.get_by_ids(prompt_ids)
-        updated_promtps = [Prompt(prompt_id=p.prompt_id, content=p.content, created_at=p.created_at, updated_at= datetime.now(), cluster_id=assignments[p.prompt_id])  for p in prompts]
-        await self.prompt_store.update(updated_promtps)
+        updated_at = datetime.now()
+        updated_prompts: list[Prompt] = []
+
+        for p in prompts:
+            original_cluster = assignments[p.prompt_id]
+
+            if not merges:
+                new_cluster = original_cluster
+            else:
+                new_cluster = next(
+                    (mid for mid, clusters in merges.items()
+                    if original_cluster in clusters),
+                    original_cluster,
+                )
+
+            updated_prompts.append(
+                Prompt(
+                    p.prompt_id,
+                    p.content,
+                    created_at=p.created_at,
+                    updated_at=updated_at,
+                    cluster_id=new_cluster,
+                )
+            )
+
+        await self.prompt_store.update(updated_prompts)
+
 
     def update_clusters(self, clusters: Dict[str, BaseCluster]):
         cluster_embeddings = [ItemEmbedding[Any, ClusterMetadata](c.prototype_id, c.embedding, metadata=asdict(c.metadata)) for c in clusters.values()]

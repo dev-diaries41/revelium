@@ -54,7 +54,7 @@ async def main():
     # TODO 
     query_result = revelium.embedding_store.get(include=['embeddings', 'metadatas'])
     result = revelium.cluster(query_result.ids, query_result.embeddings)
-    await revelium.update_prompts(result.assignments)
+    await revelium.update_prompts(result.assignments, result.merges)
     revelium.update_clusters(result.clusters)
     # cluster_merges, assignments = generate_test_clusters(num_items=100_000, num_clusters=5_000)
         
