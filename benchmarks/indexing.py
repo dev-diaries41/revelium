@@ -15,7 +15,7 @@ from server.constants import MINILM_MODEL_PATH, DB_DIR
 
 
 BENCHMARK_DIR = "output/benchmarks"
-BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_speed.jsonl")
+BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_benchmarks.jsonl")
 BENCHMARK_PROMPT_STORE_PATH = os.join(BENCHMARK_DIR, "prompts.db")
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
