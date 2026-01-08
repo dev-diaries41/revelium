@@ -20,9 +20,8 @@ from server.constants import MINILM_MODEL_PATH
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BENCHMARK_DIR = "output/benchmarks"
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_benchmarks.jsonl")
-BENCHMARK_PROMPT_STORE_PATH = os.path.join(BENCHMARK_DIR, "chroma.db")
-BENCHMARK_CHROMADB_PATH = os.path.join(BENCHMARK_DIR, "prompts.db")
-BENCHMARK_COLLECTION_PATH = os.path.join(BENCHMARK_DIR, "prompts.db")
+BENCHMARK_PROMPT_STORE_PATH = os.path.join(BENCHMARK_DIR, "prompts.db")
+BENCHMARK_CHROMADB_PATH = os.path.join(BENCHMARK_DIR, "chroma.db")
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
