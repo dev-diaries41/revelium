@@ -6,7 +6,7 @@ import chromadb
 from smartscan.classify import IncrementalClusterer
 from smartscan.providers import  MiniLmTextEmbedder
 
-from revelium.utils import with_time
+from revelium.utils.decorators import with_time
 from revelium.data import get_placeholder_prompts
 from revelium.prompts.prompt_indexer import PromptIndexer, DefaultPromptIndexerListener
 from revelium.prompts.store import AsyncSQLitePromptStore

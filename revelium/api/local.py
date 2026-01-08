@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from dataclasses import asdict
 from numpy import ndarray
 
-from revelium.utils import with_time
+from revelium.utils.decorators import with_time
 from revelium.prompts.prompt_indexer import PromptIndexer
 from revelium.prompts.store import PromptStore
 from revelium.prompts.types import Prompt
