@@ -1,6 +1,6 @@
 import random
 import string
-from const import physics_sentences, quantum_mechanics_sentences, btc_analysis, forex_analysis, long_physics_sentences, long_btc_analysis, long_forex_analysis
+from placeholder_data import physics_sentences, quantum_mechanics_sentences, btc_analysis, forex_analysis, long_physics_sentences, long_btc_analysis, long_forex_analysis
 from revelium.prompts.types import Prompt
 ## DEV ONLY placeholders for getting data to cluster
 def strings_to_prompts(arr: list[str], id_prefix: str) -> list[Prompt]:

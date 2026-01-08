@@ -3,12 +3,11 @@ import json
 import asyncio
 import chromadb
 
-from smartscan import Assignments
-from smartscan.classify import calculate_cluster_accuracy, IncrementalClusterer
+from smartscan.classify import IncrementalClusterer
 from smartscan.providers import  MiniLmTextEmbedder
 
 from revelium.utils import with_time
-from revelium.data import get_placeholder_prompts, get_label_counts, generate_test_clusters
+from revelium.data import get_placeholder_prompts
 from revelium.prompts.prompt_indexer import PromptIndexer, DefaultPromptIndexerListener
 from revelium.prompts.store import AsyncSQLitePromptStore
 from revelium.api.local import ReveliumLocalClient
@@ -18,9 +17,7 @@ from server.constants import MINILM_MODEL_PATH, DB_DIR
 
 ## DEV ONLY
 
-
 random.seed(32)
-
 
 async def main():
     text_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH, 512)
@@ -51,22 +48,13 @@ async def main():
     print(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
     # Clustering
-    # TODO 
     query_result = revelium.embedding_store.get(include=['embeddings', 'metadatas'])
     result = revelium.cluster(query_result.ids, query_result.embeddings)
     await revelium.update_prompts(result.assignments, result.merges)
-    revelium.update_clusters(result.clusters)
-    # cluster_merges, assignments = generate_test_clusters(num_items=100_000, num_clusters=5_000)
+    revelium.update_clusters(result.clusters, result.merges)
         
     with open("output/assignments_long.json", "w") as f:
         json.dump(dict(sorted(result.assignments.items())), f, indent=1)
-
-    # if result.merges
-    # with open("output/merged.json", "w") as f:
-    #     json.dump(dict(sorted(assignments.items())), f, indent=1)
-
-    # Metrics    
-
 
 
 asyncio.run(main())
