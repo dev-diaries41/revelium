@@ -16,7 +16,7 @@ from server.constants import MINILM_MODEL_PATH, DB_DIR
 
 BENCHMARK_DIR = "output/benchmarks"
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_benchmarks.jsonl")
-BENCHMARK_PROMPT_STORE_PATH = os.join(BENCHMARK_DIR, "prompts.db")
+BENCHMARK_PROMPT_STORE_PATH = os.path.join(BENCHMARK_DIR, "prompts.db")
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
@@ -31,7 +31,7 @@ async def main(labelled_prompts: list[Prompt]):
     indexer = PromptIndexer(text_embedder, 512, listener=DefaultPromptIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store)
     
     index_results = await indexer.run(labelled_prompts)
-    print(f"time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
+    print(f"time_elpased: {index_results.time_elapsed} | processed: {index_results.total_processed}")
 
     result = {k: v for k, v in asdict(index_results).items() if k != "error"}
 
