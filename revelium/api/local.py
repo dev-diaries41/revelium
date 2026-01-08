@@ -36,11 +36,11 @@ class ReveliumLocalClient():
     def cluster(self, ids: List[str], embeddings: List[ndarray]):
         return self.clusterer.cluster(ids, embeddings)
                
-    def update_prompts(self, assignments: Assignments):
-        prompt_ids = assignments.keys()
-        prompts = self.prompt_store.get_by_ids(prompt_ids)
-        updated_promtps = [Prompt(prompt_id=p.prmopt_id, content=p.content, created_at=p.created_at, updated_at= datetime.now(), cluster_id=assignments[p.prompt_id])  for p in prompts]
-        self.prompt_store.update(updated_promtps)
+    async def update_prompts(self, assignments: Assignments):
+        prompt_ids = [str(k) for k in assignments.keys()]
+        prompts = await self.prompt_store.get_by_ids(prompt_ids)
+        updated_promtps = [Prompt(prompt_id=p.prompt_id, content=p.content, created_at=p.created_at, updated_at= datetime.now(), cluster_id=assignments[p.prompt_id])  for p in prompts]
+        await self.prompt_store.update(updated_promtps)
 
     def update_clusters(self, clusters: Dict[str, BaseCluster]):
         cluster_embeddings = [ItemEmbedding[Any, ClusterMetadata](c.prototype_id, c.embedding, metadata={"prototype_size":c.prototype_size, "cohesion_score": c.cohesion_score}) for c in clusters.values()]
