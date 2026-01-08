@@ -10,6 +10,7 @@ output/
 models/
 
 # Files
+.env
 *.onnx
 TODO.md
 placeholder_data.py
