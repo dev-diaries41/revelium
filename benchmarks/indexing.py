@@ -14,6 +14,7 @@ from revelium.prompts.types import Prompt
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.data import get_placeholder_prompts
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
+from benchmarks.helpers import get_collection_name
 
 from server.constants import MINILM_MODEL_PATH
 
@@ -28,20 +29,21 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
 
+
 async def run(labelled_prompts: list[Prompt], embedders: dict[str, TextEmbeddingProvider]):
     client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
     prompt_store = AsyncSQLitePromptStore(BENCHMARK_PROMPT_STORE_PATH)
    
     results = {}
-    for name, embedder in embedders.items():
+    for model, embedder in embedders.items():
         embedder.init()
-        collection_name = f"{name}_prompts_{embedder.embedding_dim}"
+        collection_name = get_collection_name(model, embedder.embedding_dim)
         collection = client.get_or_create_collection(name=collection_name)
         embedding_store = ChromaDBEmbeddingStore(collection)
         indexer = PromptIndexer(embedder, embedder._max_len, listener=DefaultPromptIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store)
         result =  await indexer.run(labelled_prompts)
-        results[name] = {k: v for k, v in asdict(result).items() if k != "error"}
-        print(f"{name}_result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
+        results[model] = {k: v for k, v in asdict(result).items() if k != "error"}
+        print(f"{model}_result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
 
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
         f.write(json.dumps(results, indent=None) + "\n")
