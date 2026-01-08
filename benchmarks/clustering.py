@@ -61,6 +61,8 @@ def run(labelled_prompts: list[Prompt], clusterer: IncrementalClusterer, cluster
         query_result = embedding_store.get(ids=item_ids, include=['embeddings', 'metadatas'])
 
         result, time = cluster(clusterer, query_result)
+        # for c in result.clusters.values():
+        #     print(c.metadata)
         acc_info = calculate_cluster_accuracy(true_labels, result.assignments)
         bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
         results[collection_name] = bench
