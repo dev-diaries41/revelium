@@ -18,6 +18,6 @@ def with_time(func):
         result = func(*args, **kwargs)
         time_elapsed = time.perf_counter() - start
         print(f" Time elapsed: {time_elapsed:.6f} s")
-        return result
+        return result, time_elapsed
     return wrapper
 
