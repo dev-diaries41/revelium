@@ -1,7 +1,7 @@
 from smartscan import ItemEmbedding
 from smartscan.media import chunk_text
 from smartscan.embeds import generate_prototype_embedding, EmbeddingStore
-from smartscan.processor import BatchProcessor, ProcessorListener
+from smartscan.processor import BatchProcessor
 from smartscan.providers import TextEmbeddingProvider
 from revelium.prompts.store import PromptStore
 from revelium.prompts.types import Prompt
@@ -32,9 +32,3 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
              
     async def on_batch_complete(self, batch):
         self.embeddings_store.add(batch)
-        
-class DefaultPromptIndexerListener(ProcessorListener[Prompt, ItemEmbedding]):
-    def on_error(self, e, item):
-        print(e)
-    def on_fail(self, result):
-        return print(result.error)
