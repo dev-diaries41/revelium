@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Dict, Any
+from dataclasses import asdict
 from numpy import ndarray
 
 from revelium.utils import with_time
@@ -43,7 +44,7 @@ class ReveliumLocalClient():
         await self.prompt_store.update(updated_promtps)
 
     def update_clusters(self, clusters: Dict[str, BaseCluster]):
-        cluster_embeddings = [ItemEmbedding[Any, ClusterMetadata](c.prototype_id, c.embedding, metadata={"prototype_size":c.prototype_size, "cohesion_score": c.cohesion_score}) for c in clusters.values()]
+        cluster_embeddings = [ItemEmbedding[Any, ClusterMetadata](c.prototype_id, c.embedding, metadata=asdict(c.metadata)) for c in clusters.values()]
         self.embedding_store.upsert(cluster_embeddings)
 
     def calculate_cluster_accuracy(self, labelled_cluster_counts: Dict[str, int]):

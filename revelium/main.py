@@ -3,6 +3,7 @@ import json
 import asyncio
 import chromadb
 
+from smartscan import Assignments
 from smartscan.classify import calculate_cluster_accuracy, IncrementalClusterer
 from smartscan.providers import  MiniLmTextEmbedder
 
@@ -51,8 +52,10 @@ async def main():
 
     # Clustering
     # TODO 
-    query_result = revelium.embedding_store.get(include=['embeddings'])
+    query_result = revelium.embedding_store.get(include=['embeddings', 'metadatas'])
     result = revelium.cluster(query_result.ids, query_result.embeddings)
+    await revelium.update_prompts(result.assignments)
+    revelium.update_clusters(result.clusters)
     # cluster_merges, assignments = generate_test_clusters(num_items=100_000, num_clusters=5_000)
         
     with open("output/assignments_long.json", "w") as f:
@@ -62,14 +65,7 @@ async def main():
     # with open("output/merged.json", "w") as f:
     #     json.dump(dict(sorted(assignments.items())), f, indent=1)
 
-    # Metrics
-    labelled_cluster_counts= get_label_counts()
-    cluster_ids = labelled_cluster_counts.keys()
-    predict_count = {}
-    for cluster_id in cluster_ids:
-        predict_count[cluster_id] = await revelium.prompt_store.count(cluster_id=cluster_id)
-    acc_info = calculate_cluster_accuracy(labelled_cluster_counts, predict_count)
-    print(acc_info.per_label, acc_info.mean_accuracy)
+    # Metrics    
 
 
 
