@@ -4,7 +4,7 @@ from dataclasses import asdict
 from numpy import ndarray
 
 from revelium.utils.decorators import with_time
-from revelium.prompts.prompt_indexer import PromptIndexer
+from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.store import PromptStore
 from revelium.prompts.types import Prompt
 from revelium.tokens import embedding_token_cost
