@@ -27,13 +27,10 @@ def main(labelled_prompts: list[Prompt]):
     text_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH, 512)
     text_embedder.init()
     client = chromadb.PersistentClient(path=DB_DIR, settings=chromadb.Settings(anonymized_telemetry=False))
-
-    collection = client.get_or_create_collection(
-            name=f"cluster_collection",
-            metadata={"description": "Cluster Collection"}
-            )
+    collection = client.get_or_create_collection(name=f"cluster_collection", metadata={"description": "Cluster Collection"})
     embedding_store = ChromaDBEmbeddingStore(collection)
     clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.8, benchmarking=True)
+    
     true_labels: dict[ItemId, str] = {}
     for p in labelled_prompts:
         true_labels[p.prompt_id] = p.prompt_id.split("_")[0]
