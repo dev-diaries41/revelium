@@ -18,6 +18,7 @@ BENCHMARK_DIR = "output/benchmarks"
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "clustering_benchmarks.jsonl")
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, "assignments_clustering_benchmarks.jsonl")
 BENCHMARK_CHROMADB_PATH = os.path.join(BENCHMARK_DIR, "chroma.db")
+BENCHMARK_PROMPT_STORE_PATH = os.path.join(BENCHMARK_DIR, "prompts.db")
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
@@ -56,6 +57,7 @@ async def run(revelium: Revelium):
     #     print(c.metadata)
     
     await revelium.update_prompts(result.assignments, result.merges)
+    revelium.update_clusters(result.clusters, result.merges)
 
     true_labels: dict[ItemId, str] = {}
     for prompt_id in ids:
@@ -79,7 +81,7 @@ async def run(revelium: Revelium):
 
 
 async def main():
-    revelium = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH))
+    revelium = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH, prompt_store_path=BENCHMARK_PROMPT_STORE_PATH))
     await run(revelium)
 
 asyncio.run(main())
