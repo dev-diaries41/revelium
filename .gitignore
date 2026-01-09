@@ -13,4 +13,6 @@ models/
 .env
 *.onnx
 TODO.md
+.env
+
 placeholder_data.py
