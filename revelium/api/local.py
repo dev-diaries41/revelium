@@ -27,7 +27,7 @@ from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
 from revelium.schemas.model import ModelConfig
-from server.constants import MINILM_MODEL_PATH, DB_DIR
+from revelium.constants import MINILM_MODEL_PATH, DB_DIR
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 DEFAULT_SYSTEM_PROMPT = "Your objective is to label prompt messages from clusters and label them, returning ClassificationResult. Labels should be one word max 3 words."
