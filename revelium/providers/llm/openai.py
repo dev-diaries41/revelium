@@ -5,7 +5,7 @@ from revelium.schemas.model import ModelConfig, Message
 
 class OpenAIClient(LLMClient):
     def __init__(self, api_key: str, config: ModelConfig):
-        self.openai = OpenAI(api_key)
+        self.openai = OpenAI(api_key=api_key)
         self.config = config
 
     def generate_text(self, prompt: str, history: Optional[List[Message]] = None) -> str:
