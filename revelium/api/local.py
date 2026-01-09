@@ -108,7 +108,7 @@ class Revelium():
                     cluster_id=new_cluster,
                 )
             )
-        print(f"length of updated: {len(updated_prompts)}")
+        # print(f"length of updated: {len(updated_prompts)}")
 
         await self.prompt_store.update(updated_prompts)
 
