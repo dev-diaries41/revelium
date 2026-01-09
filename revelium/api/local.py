@@ -8,10 +8,11 @@ from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.store import PromptStore
 from revelium.prompts.types import Prompt
 from revelium.tokens import embedding_token_cost
+from revelium.providers.llm.llm_client import LLMClient
 
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  TextEmbeddingProvider
-from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, ModelName
+from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId,ClassificationResult,  ModelName
 from smartscan.embeds import EmbeddingStore
 
 ## DEV ONLY
@@ -24,6 +25,7 @@ class Revelium():
             embedding_store: EmbeddingStore,
             indexer: PromptIndexer,
             clusterer: IncrementalClusterer,
+            llm: LLMClient,
             api_key:Optional[str] = None,
                  ):
         self.text_embedder = text_embedder
@@ -31,6 +33,7 @@ class Revelium():
         self.clusterer = clusterer
         self.indexer = indexer
         self.embedding_store = embedding_store
+        self.llm = llm
 
         self.api_key = api_key
         if self.api_key:
@@ -41,10 +44,14 @@ class Revelium():
     async def index(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
     
+    def label_prompts(self, sample_prompts: List[str]):
+        input_prompt = f"""## Clustrer sample_prompts \n\n {sample_prompts}"""
+        return self.llm.generate_json(input_prompt, ClassificationResult)
+        
     def cluster(self, ids: List[str], embeddings: List[ndarray]):
         return self.clusterer.cluster(ids, embeddings)
                
-    async def update_prompts(self, assignments: Assignments, merges: ClusterMerges):
+    async def update_prompts(self, assignments: Assignments, merges: Optional[ClusterMerges] = None):
         prompt_ids = [str(k) for k in assignments.keys()]
         prompts = await self.prompt_store.get_by_ids(prompt_ids)
         updated_at = datetime.now()
@@ -71,6 +78,7 @@ class Revelium():
                     cluster_id=new_cluster,
                 )
             )
+        print(f"length of updated: {len(updated_prompts)}")
 
         await self.prompt_store.update(updated_prompts)
 
