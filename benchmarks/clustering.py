@@ -1,6 +1,5 @@
 import random
 import json
-import chromadb
 import os
 import asyncio
 
@@ -12,14 +11,12 @@ from dataclasses import asdict
 from smartscan import  ItemId, ClusterResult
 from smartscan.classify import IncrementalClusterer
 from revelium.utils.decorators import with_time
-from benchmarks.helpers import get_collection_name, get_revelium_client
-from revelium.api.local import Revelium
+from revelium.api.local import Revelium, ReveliumConfig
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BENCHMARK_DIR = "output/benchmarks"
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "clustering_benchmarks.jsonl")
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, "assignments_clustering_benchmarks.jsonl")
-BENCHMARK_PROMPT_STORE_PATH = os.path.join(BENCHMARK_DIR, "prompts.db")
 BENCHMARK_CHROMADB_PATH = os.path.join(BENCHMARK_DIR, "chroma.db")
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
@@ -32,7 +29,7 @@ def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterRe
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-async def run(revelium: Revelium, model: str):
+async def run(revelium: Revelium):
     results = {}
     revelium.clusterer.clear()
     ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
@@ -42,14 +39,14 @@ async def run(revelium: Revelium, model: str):
     random.seed(32)
 
     # Ensure collection name is unique per model/dim
-    count = revelium.embedding_store.count()
+    count = revelium.prompt_embedding_store.count()
     ids, embeddings = [], []
 
     limit = 500
     offset = 0
 
     while len(ids) < count:
-        query_result = revelium.embedding_store.get(include=['embeddings'], offset=offset, limit=limit)
+        query_result = revelium.prompt_embedding_store.get(include=['embeddings'], offset=offset, limit=limit)
         ids.extend(query_result.ids)
         embeddings.extend(query_result.embeddings)
         offset += limit
@@ -70,8 +67,8 @@ async def run(revelium: Revelium, model: str):
 
     acc_info = revelium.calculate_cluster_accuracy(true_labels, result.assignments)
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
-    results[model] = bench
-    print(f"{model}: {bench}")
+    results[revelium.config.text_embedder] = bench
+    print(results)
 
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
         f.write(json.dumps(results, indent=None) + "\n")
@@ -82,9 +79,7 @@ async def run(revelium: Revelium, model: str):
 
 
 async def main():
-    client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
-    collection_name = get_collection_name("minilm", 384)
-    revelium_client = get_revelium_client(client, BENCHMARK_PROMPT_STORE_PATH, collection_name)
-    await run(revelium_client, "minilm")
+    revelium = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH))
+    await run(revelium)
 
 asyncio.run(main())

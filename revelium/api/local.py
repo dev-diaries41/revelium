@@ -27,12 +27,12 @@ from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
 from revelium.schemas.model import ModelConfig
-from server.constants import MINILM_MODEL_PATH
+from server.constants import MINILM_MODEL_PATH, DB_DIR
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 DEFAULT_SYSTEM_PROMPT = "Your objective is to label prompt messages from clusters and label them, returning ClassificationResult. Labels should be one word max 3 words."
-DEFAULT_CHROMADB_PATH = "db/revelium_chromadb"
-DEFAULT_PROMPTS_PATH = "db/prompts.db"
+DEFAULT_CHROMADB_PATH = os.path.join(DB_DIR, "revelium_chromadb")
+DEFAULT_PROMPTS_PATH = os.path.join(DB_DIR, "prompts.db")
 DEFAULT_OPENAI_MODEL = "gpt-5-mini"
 MINILM_MAX_TOKENS = 512
 
@@ -48,6 +48,7 @@ class ReveliumConfig(BaseModel):
 
 class Revelium():
     def __init__(self, config: ReveliumConfig):
+        os.makedirs(DB_DIR, exist_ok=True)
         self.config = config
         self.llm = OpenAIClient(OPENAI_API_KEY, ModelConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
         self.text_embedder = self._get_text_embedder(config.text_embedder, config.provider_api_key)
