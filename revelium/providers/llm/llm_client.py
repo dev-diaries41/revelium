@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import List, Optional, Dict, TypeVar
+from typing import List, Optional, Dict, TypeVar, Type
 from pydantic import BaseModel
 from revelium.schemas.model import Message
 import numpy as np
@@ -12,7 +12,7 @@ class LLMClient(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def generate_json(self, prompt: str, format: JsonOutput, history: Optional[List[Message]] = None) -> JsonOutput: 
+    def generate_json(self, prompt: str, format: Type[JsonOutput], history: Optional[List[Message]] = None) -> JsonOutput: 
         raise NotImplementedError
     
     @abstractmethod
