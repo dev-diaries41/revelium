@@ -4,11 +4,12 @@ import chromadb
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import asdict
-from numpy import ndarray
 
-from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId
+from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
+from smartscan.embeds import EmbeddingStore
+from smartscan.processor import ProcessorListener
 
 from revelium.constants import MINILM_MODEL_PATH, DB_DIR, MINILM_MAX_TOKENS
 from revelium.prompts.indexer import PromptIndexer
@@ -17,36 +18,55 @@ from revelium.tokens import embedding_token_cost
 from revelium.schemas.llm import LLMClassificationResult
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.indexer_listener import ProgressBarIndexerListener
-from revelium.prompts.store import AsyncSQLitePromptStore
+from revelium.prompts.store import AsyncSQLitePromptStore, PromptStore
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
 from revelium.schemas.llm import LLMClientConfig
+from revelium.providers.llm.llm_client import LLMClient
 from revelium.schemas.revelium_config import ReveliumConfig
 from revelium.utils.decorators import with_time
 
 
 class Revelium():
     UNLABELLED = "unlabelled"  # class-level constant
+    CLUSTER_TYPE = "cluster"
+    PROMPT_TYPE = "prompt"
 
-    def __init__(self, config: ReveliumConfig):
+    def __init__(self, 
+                
+        config: Optional[ReveliumConfig] = None,                 
+        text_embedder: Optional[TextEmbeddingProvider] = None,
+        llm_client: Optional[LLMClient] = None,
+        clusterer: Optional[IncrementalClusterer] = None,
+        indexer_listener: Optional[ProcessorListener] = None,
+        prompt_store: Optional[PromptStore] = None,
+        cluster_embedding_store: Optional[EmbeddingStore] = None,
+        prompt_embedding_store: Optional[EmbeddingStore] = None,
+                 ):
         os.makedirs(DB_DIR, exist_ok=True)
-        self.config = config
-        self.text_embedder = self._get_text_embedder(config.text_embedder, config.provider_api_key)
-        self.llm = OpenAIClient(config.provider_api_key, LLMClientConfig(model_name=config.provider_model, system_prompt=config.system_prompt))
-        self.clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking)
+        self.config = config or ReveliumConfig()
+        self.text_embedder = text_embedder or self._get_text_embedder(self.config.text_embedder, self.config.provider_api_key)
+        self.llm = llm_client or  OpenAIClient(self.config.provider_api_key, LLMClientConfig(model_name=self.config.provider_model, system_prompt=self.config.system_prompt))
+        self.clusterer = clusterer or IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking)  
         
-        chroma_client = chromadb.PersistentClient(path=config.chromadb_path, settings=chromadb.Settings(anonymized_telemetry=False))
-        cluster_embed_collection = chroma_client.get_or_create_collection(name=self._get_embedding_collection_name("cluster", config.text_embedder, self.text_embedder.embedding_dim))
-        prompt_embed_collection = chroma_client.get_or_create_collection(name=self._get_embedding_collection_name("prompt", config.text_embedder, self.text_embedder.embedding_dim))
+        if not cluster_embedding_store or prompt_embedding_store:
+            client = chromadb.PersistentClient(path=self.config.chromadb_path, settings=chromadb.Settings(anonymized_telemetry=False))
+
+        self.cluster_embedding_store = cluster_embedding_store or  ChromaDBEmbeddingStore(
+            client.get_or_create_collection(
+                self._get_embedding_collection_name(self.CLUSTER_TYPE, self.config.text_embedder, self.text_embedder.embedding_dim)
+                )
+            )
+        self.prompt_embedding_store = prompt_embedding_store or ChromaDBEmbeddingStore(
+                client.get_or_create_collection(
+                    self._get_embedding_collection_name(self.PROMPT_TYPE, self.config.text_embedder, self.text_embedder.embedding_dim)
+                )
+            ) 
         
-        self.cluster_embedding_store = ChromaDBEmbeddingStore(cluster_embed_collection)
-        self.prompt_embedding_store = ChromaDBEmbeddingStore(prompt_embed_collection)
-        
-        self.prompt_store = AsyncSQLitePromptStore(config.prompt_store_path)
-        
-        self.indexer = PromptIndexer(self.text_embedder, listener=ProgressBarIndexerListener(), prompt_store=self.prompt_store, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
+        self.prompt_store = prompt_store or AsyncSQLitePromptStore(self.config.prompt_store_path)
+        self.indexer =  PromptIndexer(self.text_embedder, listener= indexer_listener or ProgressBarIndexerListener(), prompt_store=self.prompt_store, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
     
     async def index(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
@@ -58,7 +78,8 @@ class Revelium():
         input_prompt = self._get_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
         
-    def cluster(self, ids: List[str], embeddings: List[ndarray]):
+    def cluster(self):
+        ids, embeddings = self._paginate_prompt_embed_store()
         return self.clusterer.cluster(ids, embeddings)
                
     async def update_prompts(self, assignments: Assignments, merges: ClusterMerges):
@@ -144,3 +165,16 @@ class Revelium():
 
     def _get_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]):
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
+    
+    def _paginate_prompt_embed_store(self):
+        ids, embeddings = [], []
+        limit = 500
+        offset = 0
+        count = self.prompt_embedding_store.count()
+
+        while len(ids) < count:
+            query_result = self.prompt_embedding_store.get(include=['embeddings'], offset=offset, limit=limit)
+            ids.extend(query_result.ids)
+            embeddings.extend(query_result.embeddings)
+            offset += limit
+        return ids, embeddings
