@@ -10,13 +10,11 @@ from dataclasses import asdict
 from revelium.prompts.types import Prompt
 from revelium.data import get_dummy_data, get_placeholder_prompts
 from revelium.api.local import Revelium, ReveliumConfig
+from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-BENCHMARK_DIR = "output/benchmarks"
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_benchmarks.jsonl")
-BENCHMARK_PROMPT_STORE_PATH = os.path.join(BENCHMARK_DIR, "prompts.db")
-BENCHMARK_CHROMADB_PATH = os.path.join(BENCHMARK_DIR, "chroma.db")
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 

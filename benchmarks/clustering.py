@@ -12,13 +12,11 @@ from smartscan import  ItemId, ClusterResult
 from smartscan.classify import IncrementalClusterer
 from revelium.utils.decorators import with_time
 from revelium.api.local import Revelium, ReveliumConfig
+from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-BENCHMARK_DIR = "output/benchmarks"
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "clustering_benchmarks.jsonl")
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, "assignments_clustering_benchmarks.jsonl")
-BENCHMARK_CHROMADB_PATH = os.path.join(BENCHMARK_DIR, "chroma.db")
-BENCHMARK_PROMPT_STORE_PATH = os.path.join(BENCHMARK_DIR, "prompts.db")
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
