@@ -12,7 +12,7 @@ class OpenAIClient(LLMClient):
         response =  self.openai.responses.create(
         model=self.config.model_name,
         input = [
-            Message(role="system", content={self.config.system_prompt}),
+            Message(role="system", content=self.config.system_prompt),
             *(history or []),
             Message(role="user", content=prompt),
         ]
@@ -23,7 +23,7 @@ class OpenAIClient(LLMClient):
         response = self.openai.responses.parse(
             model=self.config.model_name,
             input=[
-                    Message(role="system", content={self.config.system_prompt}),
+                    Message(role="system", content=self.config.system_prompt),
                     *(history or []),
                     Message(role="user", content=prompt),
             ],
