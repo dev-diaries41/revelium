@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from dataclasses import asdict
-from smartscan import  ItemId
-from smartscan.classify.types import ClusterResult
+from smartscan import  ItemId, ClusterResult
 from smartscan.classify import IncrementalClusterer, calculate_cluster_accuracy
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.utils.decorators import with_time
