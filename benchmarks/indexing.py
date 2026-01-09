@@ -35,6 +35,9 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 async def run(labelled_prompts: list[Prompt], embedders: dict[str, TextEmbeddingProvider]):
     client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
     prompt_store = AsyncSQLitePromptStore(BENCHMARK_PROMPT_STORE_PATH)
+    count = await  prompt_store.count()
+    if count == 0:
+        await prompt_store.add(labelled_prompts)
    
     results = {}
     for model, embedder in embedders.items():
