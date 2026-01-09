@@ -9,7 +9,7 @@ load_dotenv()
 from dataclasses import asdict
 from revelium.prompts.types import Prompt
 from revelium.data import get_dummy_data, get_placeholder_prompts
-from revelium.api.local import Revelium, ReveliumConfig
+from revelium.core.engine import Revelium, ReveliumConfig
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 
 
