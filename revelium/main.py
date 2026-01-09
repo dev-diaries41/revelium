@@ -11,7 +11,7 @@ from revelium.data import get_placeholder_prompts
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.indexer_listener import ProgressBarIndexerListener
 from revelium.prompts.store import AsyncSQLitePromptStore
-from revelium.api.local import ReveliumLocalClient
+from revelium.api.local import Revelium
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 
 from server.constants import MINILM_MODEL_PATH, DB_DIR
@@ -33,7 +33,7 @@ async def main():
     embedding_store = ChromaDBEmbeddingStore(collection)
     indexer = PromptIndexer(text_embedder, 512, listener=ProgressBarIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store)
     clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.8)
-    revelium = ReveliumLocalClient(text_embedder, prompt_store, embedding_store, indexer , clusterer)
+    revelium = Revelium(text_embedder, prompt_store, embedding_store, indexer , clusterer)
 
     count = await revelium.prompt_store.count()
     if count == 0:

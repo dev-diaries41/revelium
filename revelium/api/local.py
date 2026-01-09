@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dataclasses import asdict
 from numpy import ndarray
 
@@ -16,7 +16,7 @@ from smartscan.embeds import EmbeddingStore
 
 ## DEV ONLY
 
-class ReveliumLocalClient():
+class Revelium():
     def __init__(
             self,
             text_embedder: TextEmbeddingProvider,
@@ -24,12 +24,19 @@ class ReveliumLocalClient():
             embedding_store: EmbeddingStore,
             indexer: PromptIndexer,
             clusterer: IncrementalClusterer,
+            api_key:Optional[str] = None,
                  ):
         self.text_embedder = text_embedder
         self.prompt_store = prompt_store
         self.clusterer = clusterer
         self.indexer = indexer
         self.embedding_store = embedding_store
+
+        self.api_key = api_key
+        if self.api_key:
+            #TODO integrate paid api
+            pass
+
     
     async def index(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
