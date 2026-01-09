@@ -2,7 +2,7 @@
 
 import argparse
 import uvicorn
-from server.app import app
+from api.app import app
 
 def main():
     parser = argparse.ArgumentParser()
