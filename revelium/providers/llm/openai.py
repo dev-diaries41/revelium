@@ -1,10 +1,10 @@
 from typing import Optional, List
 from revelium.providers.llm.llm_client import LLMClient
 from openai import OpenAI
-from revelium.schemas.model import ModelConfig, Message
+from revelium.schemas.llm import LLMClientConfig, Message
 
 class OpenAIClient(LLMClient):
-    def __init__(self, api_key: str, config: ModelConfig):
+    def __init__(self, api_key: str, config: LLMClientConfig):
         self.openai = OpenAI(api_key=api_key)
         self.config = config
 

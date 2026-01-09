@@ -10,22 +10,21 @@ from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, 
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
 
-from revelium.utils.decorators import with_time
+from revelium.constants import MINILM_MODEL_PATH, DB_DIR, MINILM_MAX_TOKENS
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.types import Prompt
 from revelium.tokens import embedding_token_cost
-from revelium.schemas.label import LLMClassificationResult
-
+from revelium.schemas.llm import LLMClassificationResult
 from revelium.prompts.indexer import PromptIndexer
-from revelium.prompts.indexer_listener import DefaultIndexerListener
+from revelium.prompts.indexer_listener import ProgressBarIndexerListener
 from revelium.prompts.store import AsyncSQLitePromptStore
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
-from revelium.schemas.model import ModelConfig
-from revelium.schemas.config import ReveliumConfig
-from revelium.constants import MINILM_MODEL_PATH, DB_DIR, MINILM_MAX_TOKENS
+from revelium.schemas.llm import LLMClientConfig
+from revelium.schemas.revelium_config import ReveliumConfig
+from revelium.utils.decorators import with_time
 
 
 class Revelium():
@@ -34,24 +33,20 @@ class Revelium():
     def __init__(self, config: ReveliumConfig):
         os.makedirs(DB_DIR, exist_ok=True)
         self.config = config
-        self.llm = OpenAIClient(config.provider_api_key, ModelConfig(model_name=config.provider_model, system_prompt=config.system_prompt))
         self.text_embedder = self._get_text_embedder(config.text_embedder, config.provider_api_key)
-        self.chroma_client = chromadb.PersistentClient(path=config.chromadb_path, settings=chromadb.Settings(anonymized_telemetry=False))
-
+        self.llm = OpenAIClient(config.provider_api_key, LLMClientConfig(model_name=config.provider_model, system_prompt=config.system_prompt))
         self.clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking)
         
-        cluster_embed_collection = self.chroma_client.get_or_create_collection(name=self._get_embedding_collection_name("cluster", config.text_embedder, self.text_embedder.embedding_dim))
-        prompt_embed_collection = self.chroma_client.get_or_create_collection(name=self._get_embedding_collection_name("prompt", config.text_embedder, self.text_embedder.embedding_dim))
+        chroma_client = chromadb.PersistentClient(path=config.chromadb_path, settings=chromadb.Settings(anonymized_telemetry=False))
+        cluster_embed_collection = chroma_client.get_or_create_collection(name=self._get_embedding_collection_name("cluster", config.text_embedder, self.text_embedder.embedding_dim))
+        prompt_embed_collection = chroma_client.get_or_create_collection(name=self._get_embedding_collection_name("prompt", config.text_embedder, self.text_embedder.embedding_dim))
+        
         self.cluster_embedding_store = ChromaDBEmbeddingStore(cluster_embed_collection)
         self.prompt_embedding_store = ChromaDBEmbeddingStore(prompt_embed_collection)
+        
         self.prompt_store = AsyncSQLitePromptStore(config.prompt_store_path)
-        self.indexer = PromptIndexer(self.text_embedder, listener=DefaultIndexerListener(), prompt_store=self.prompt_store, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
-
-        self.api_key = config.api_key
-        if self.api_key:
-            #TODO integrate paid api
-            pass
-
+        
+        self.indexer = PromptIndexer(self.text_embedder, listener=ProgressBarIndexerListener(), prompt_store=self.prompt_store, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
     
     async def index(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
