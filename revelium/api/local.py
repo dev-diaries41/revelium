@@ -9,7 +9,7 @@ from revelium.prompts.store import PromptStore
 from revelium.prompts.types import Prompt
 from revelium.tokens import embedding_token_cost
 from revelium.providers.llm.llm_client import LLMClient
-
+from revelium.schemas.label import LLMClassificationResult
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  TextEmbeddingProvider
 from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId,ClassificationResult,  ModelName
@@ -44,9 +44,11 @@ class Revelium():
     async def index(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
     
-    def label_prompts(self, sample_prompts: List[str]):
-        input_prompt = f"""## Clustrer sample_prompts \n\n {sample_prompts}"""
-        return self.llm.generate_json(input_prompt, ClassificationResult)
+    async def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+        prompts = await self.prompt_store.get(cluster_id=cluster_id, limit=sample_size)
+        sample_prompts = [p.content for p in prompts]
+        input_prompt = f"""## ClusterId: {cluster_id}\nCluster sample_prompts \n\n {sample_prompts}"""
+        return self.llm.generate_json(input_prompt, LLMClassificationResult)
         
     def cluster(self, ids: List[str], embeddings: List[ndarray]):
         return self.clusterer.cluster(ids, embeddings)

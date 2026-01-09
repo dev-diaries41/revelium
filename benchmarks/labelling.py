@@ -20,9 +20,7 @@ BENCHMARK_CHROMADB_PATH = os.path.join(BENCHMARK_DIR, "chroma.db")
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 async def run(revelium: Revelium, cluster_id: str, sample_size: int):
-    prompts = await revelium.prompt_store.get(cluster_id=cluster_id, limit=sample_size)
-    sample_prompts = [p.content for p in prompts]
-    result = revelium.label_prompts(sample_prompts)
+    result = await revelium.label_prompts(cluster_id, sample_size)
     
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
         json.dump(result.model_dump(), f, indent=1)
