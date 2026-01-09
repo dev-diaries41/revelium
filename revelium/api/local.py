@@ -1,23 +1,20 @@
 import os
 import chromadb
 
-from openai.types import ResponsesModel
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import asdict
 from numpy import ndarray
-from pydantic import  BaseModel, Field
+
+from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId
+from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
+from smartscan.providers import  MiniLmTextEmbedder
 
 from revelium.utils.decorators import with_time
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.types import Prompt
 from revelium.tokens import embedding_token_cost
 from revelium.schemas.label import LLMClassificationResult
-from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
-from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId,  ModelName
-
-from smartscan.classify import IncrementalClusterer
-from smartscan.providers import  MiniLmTextEmbedder
 
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.indexer_listener import DefaultIndexerListener
@@ -27,30 +24,17 @@ from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
 from revelium.schemas.model import ModelConfig
-from revelium.constants import MINILM_MODEL_PATH, DB_DIR
+from revelium.schemas.config import ReveliumConfig
+from revelium.constants import MINILM_MODEL_PATH, DB_DIR, MINILM_MAX_TOKENS
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-DEFAULT_SYSTEM_PROMPT = "Your objective is to label prompt messages from clusters and label them, returning ClassificationResult. Labels should be one word max 3 words."
-DEFAULT_CHROMADB_PATH = os.path.join(DB_DIR, "revelium_chromadb")
-DEFAULT_PROMPTS_PATH = os.path.join(DB_DIR, "prompts.db")
-DEFAULT_OPENAI_MODEL = "gpt-5-mini"
-MINILM_MAX_TOKENS = 512
-
-class ReveliumConfig(BaseModel):
-    api_key: Optional[str] = Field(default=None)
-    text_embedder: TextEmbeddingModel = Field(default="all-minilm-l6-v2")
-    provider_model: ResponsesModel = Field(default=DEFAULT_OPENAI_MODEL)
-    provider_api_key: Optional[str] = Field(default=None)
-    chromadb_path: str = Field(default=DEFAULT_CHROMADB_PATH)
-    prompt_store_path: str = Field(default=DEFAULT_PROMPTS_PATH)
-    system_prompt: str = Field(default=DEFAULT_SYSTEM_PROMPT)
-    benchmarking: bool = Field(default=False)
 
 class Revelium():
+    UNLABELLED = "unlabelled"  # class-level constant
+
     def __init__(self, config: ReveliumConfig):
         os.makedirs(DB_DIR, exist_ok=True)
         self.config = config
-        self.llm = OpenAIClient(OPENAI_API_KEY, ModelConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
+        self.llm = OpenAIClient(config.provider_api_key, ModelConfig(model_name=config.provider_model, system_prompt=config.system_prompt))
         self.text_embedder = self._get_text_embedder(config.text_embedder, config.provider_api_key)
         self.chroma_client = chromadb.PersistentClient(path=config.chromadb_path, settings=chromadb.Settings(anonymized_telemetry=False))
 
@@ -73,9 +57,10 @@ class Revelium():
         return await self.indexer.run(prompts)
     
     async def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+        existing_labels = self._get_existing_labels()
         prompts = await self.prompt_store.get(cluster_id=cluster_id, limit=sample_size)
         sample_prompts = [p.content for p in prompts]
-        input_prompt = f"""## ClusterId: {cluster_id}\nCluster sample_prompts \n\n {sample_prompts}"""
+        input_prompt = self._get_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
         
     def cluster(self, ids: List[str], embeddings: List[ndarray]):
@@ -129,7 +114,7 @@ class Revelium():
             ItemEmbedding[Any, ClusterMetadata](
                 c.prototype_id,
                 c.embedding,
-                metadata={**asdict(c.metadata), "label": c.label}  # include label in stored metadata
+                metadata={**asdict(c.metadata), "label": c.label or self.UNLABELLED} 
             )
             for c in effective_clusters.values()
         ]
@@ -143,7 +128,7 @@ class Revelium():
     def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments):
         return calculate_cluster_accuracy(true_labels, predicted_clusters)
     
-    def calculate_prompt_cost(self, prompt: Prompt, price_per_1m_tokens: float, model: str | ModelName):
+    def calculate_prompt_cost(self, prompt: Prompt, price_per_1m_tokens: float, model: str | TextEmbeddingModel):
         return embedding_token_cost(prompt.content, price_per_1m_tokens, model)
 
     # helps ensure each collection get embeddings of the right size
@@ -154,7 +139,13 @@ class Revelium():
         if model == ("text-embedding-3-large" or "text-embedding-3-small"):
             if provider_api_key is None:
                 raise ValueError("Missing OpenAI API key")
-            return OpenAITextEmbedder(OPENAI_API_KEY, model=model)
+            return OpenAITextEmbedder(provider_api_key, model=model)
         else:
             return MiniLmTextEmbedder(MINILM_MODEL_PATH, MINILM_MAX_TOKENS)
 
+    def _get_existing_labels(self) -> list[str]:
+        q = self.cluster_embedding_store.get(include=['metadatas'], filter={"$ne": self.UNLABELLED})
+        return [m.get("label") for m in q.metadatas]
+
+    def _get_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]):
+        return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
