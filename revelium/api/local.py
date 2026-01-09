@@ -1,38 +1,53 @@
+import os
+import chromadb
+
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import asdict
 from numpy import ndarray
 
+from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId
+from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
+from smartscan.providers import  MiniLmTextEmbedder
+
 from revelium.utils.decorators import with_time
 from revelium.prompts.indexer import PromptIndexer
-from revelium.prompts.store import PromptStore
 from revelium.prompts.types import Prompt
 from revelium.tokens import embedding_token_cost
+from revelium.schemas.label import LLMClassificationResult
 
-from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
-from smartscan.providers import  TextEmbeddingProvider
-from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, ModelName
-from smartscan.embeds import EmbeddingStore
+from revelium.prompts.indexer import PromptIndexer
+from revelium.prompts.indexer_listener import DefaultIndexerListener
+from revelium.prompts.store import AsyncSQLitePromptStore
+from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
+from revelium.providers.llm.openai import OpenAIClient
+from revelium.providers.types import TextEmbeddingModel
+from revelium.providers.embeddings.openai import OpenAITextEmbedder
+from revelium.schemas.model import ModelConfig
+from revelium.schemas.config import ReveliumConfig
+from revelium.constants import MINILM_MODEL_PATH, DB_DIR, MINILM_MAX_TOKENS
 
-## DEV ONLY
 
 class Revelium():
-    def __init__(
-            self,
-            text_embedder: TextEmbeddingProvider,
-            prompt_store: PromptStore,
-            embedding_store: EmbeddingStore,
-            indexer: PromptIndexer,
-            clusterer: IncrementalClusterer,
-            api_key:Optional[str] = None,
-                 ):
-        self.text_embedder = text_embedder
-        self.prompt_store = prompt_store
-        self.clusterer = clusterer
-        self.indexer = indexer
-        self.embedding_store = embedding_store
+    UNLABELLED = "unlabelled"  # class-level constant
 
-        self.api_key = api_key
+    def __init__(self, config: ReveliumConfig):
+        os.makedirs(DB_DIR, exist_ok=True)
+        self.config = config
+        self.llm = OpenAIClient(config.provider_api_key, ModelConfig(model_name=config.provider_model, system_prompt=config.system_prompt))
+        self.text_embedder = self._get_text_embedder(config.text_embedder, config.provider_api_key)
+        self.chroma_client = chromadb.PersistentClient(path=config.chromadb_path, settings=chromadb.Settings(anonymized_telemetry=False))
+
+        self.clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking)
+        
+        cluster_embed_collection = self.chroma_client.get_or_create_collection(name=self._get_embedding_collection_name("cluster", config.text_embedder, self.text_embedder.embedding_dim))
+        prompt_embed_collection = self.chroma_client.get_or_create_collection(name=self._get_embedding_collection_name("prompt", config.text_embedder, self.text_embedder.embedding_dim))
+        self.cluster_embedding_store = ChromaDBEmbeddingStore(cluster_embed_collection)
+        self.prompt_embedding_store = ChromaDBEmbeddingStore(prompt_embed_collection)
+        self.prompt_store = AsyncSQLitePromptStore(config.prompt_store_path)
+        self.indexer = PromptIndexer(self.text_embedder, listener=DefaultIndexerListener(), prompt_store=self.prompt_store, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
+
+        self.api_key = config.api_key
         if self.api_key:
             #TODO integrate paid api
             pass
@@ -41,6 +56,13 @@ class Revelium():
     async def index(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
     
+    async def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+        existing_labels = self._get_existing_labels()
+        prompts = await self.prompt_store.get(cluster_id=cluster_id, limit=sample_size)
+        sample_prompts = [p.content for p in prompts]
+        input_prompt = self._get_prompt(cluster_id, existing_labels, sample_prompts)
+        return self.llm.generate_json(input_prompt, LLMClassificationResult)
+        
     def cluster(self, ids: List[str], embeddings: List[ndarray]):
         return self.clusterer.cluster(ids, embeddings)
                
@@ -71,6 +93,7 @@ class Revelium():
                     cluster_id=new_cluster,
                 )
             )
+        # print(f"length of updated: {len(updated_prompts)}")
 
         await self.prompt_store.update(updated_prompts)
 
@@ -91,21 +114,38 @@ class Revelium():
             ItemEmbedding[Any, ClusterMetadata](
                 c.prototype_id,
                 c.embedding,
-                metadata={**asdict(c.metadata), "label": c.label}  # include label in stored metadata
+                metadata={**asdict(c.metadata), "label": c.label or self.UNLABELLED} 
             )
             for c in effective_clusters.values()
         ]
 
         if merges:
-            self.embedding_store.delete(list(merged_ids))
+            self.cluster_embedding_store.delete(list(merged_ids))
 
-        self.embedding_store.upsert(cluster_embeddings)
+        self.cluster_embedding_store.upsert(cluster_embeddings)
 
 
     def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments):
         return calculate_cluster_accuracy(true_labels, predicted_clusters)
     
-    def calculate_prompt_cost(self, prompt: Prompt, price_per_1m_tokens: float, model: str | ModelName):
+    def calculate_prompt_cost(self, prompt: Prompt, price_per_1m_tokens: float, model: str | TextEmbeddingModel):
         return embedding_token_cost(prompt.content, price_per_1m_tokens, model)
 
+    # helps ensure each collection get embeddings of the right size
+    def _get_embedding_collection_name(self, type: str, model: TextEmbeddingModel, embed_dim: int):
+        return f"{type}_{model}_{embed_dim}_collection"
+    
+    def _get_text_embedder(self, model: TextEmbeddingModel, provider_api_key: Optional[str] = None):
+        if model == ("text-embedding-3-large" or "text-embedding-3-small"):
+            if provider_api_key is None:
+                raise ValueError("Missing OpenAI API key")
+            return OpenAITextEmbedder(provider_api_key, model=model)
+        else:
+            return MiniLmTextEmbedder(MINILM_MODEL_PATH, MINILM_MAX_TOKENS)
 
+    def _get_existing_labels(self) -> list[str]:
+        q = self.cluster_embedding_store.get(include=['metadatas'], filter={"$ne": self.UNLABELLED})
+        return [m.get("label") for m in q.metadatas]
+
+    def _get_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]):
+        return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""

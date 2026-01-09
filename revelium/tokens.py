@@ -1,7 +1,7 @@
 import tiktoken
 from smartscan import ModelName
 from smartscan.providers import MiniLmTextEmbedder
-from server.constants import MINILM_MODEL_PATH
+from revelium.constants import MINILM_MODEL_PATH
 
 
 def count_tokens_embedding(text: str, model: str | ModelName = "text-embedding-3-large") -> int:

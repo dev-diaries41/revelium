@@ -1,5 +1,4 @@
 import json
-import chromadb
 import asyncio
 import os
 import argparse
@@ -8,54 +7,36 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from dataclasses import asdict
-from smartscan.providers import  MiniLmTextEmbedder, TextEmbeddingProvider
-from revelium.prompts.indexer import PromptIndexer
-from revelium.prompts.indexer_listener import DefaultIndexerListener
-from revelium.prompts.store import AsyncSQLitePromptStore
 from revelium.prompts.types import Prompt
-from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.data import get_dummy_data, get_placeholder_prompts
-from revelium.providers.embeddings.openai import OpenAITextEmbedder
-from benchmarks.helpers import get_collection_name
+from revelium.api.local import Revelium, ReveliumConfig
+from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 
-from server.constants import MINILM_MODEL_PATH
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-BENCHMARK_DIR = "output/benchmarks"
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_benchmarks.jsonl")
-BENCHMARK_PROMPT_STORE_PATH = os.path.join(BENCHMARK_DIR, "prompts.db")
-BENCHMARK_CHROMADB_PATH = os.path.join(BENCHMARK_DIR, "chroma.db")
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-
-
-async def run(labelled_prompts: list[Prompt], embedders: dict[str, TextEmbeddingProvider]):
-    client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
-    prompt_store = AsyncSQLitePromptStore(BENCHMARK_PROMPT_STORE_PATH)
+async def run(revelium_client: Revelium, labelled_prompts: list[Prompt]):
+    revelium_client.text_embedder.init()
+    count = await  revelium_client.prompt_store.count()
+    if count == 0:
+        await revelium_client.prompt_store.add(labelled_prompts)
    
-    results = {}
-    for model, embedder in embedders.items():
-        embedder.init()
-        collection_name = get_collection_name(model, embedder.embedding_dim)
-        collection = client.get_or_create_collection(name=collection_name)
-        embedding_store = ChromaDBEmbeddingStore(collection)
-        indexer = PromptIndexer(embedder, listener=DefaultIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store, batch_size=100, max_concurrency=4)
-        result =  await indexer.run(labelled_prompts)
-        results[model] = {k: v for k, v in asdict(result).items() if k != "error"}
-        print(f"{model}_result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
-
+    result =  await revelium_client.index(labelled_prompts)
+    result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
+    print(f"{revelium_client.config.text_embedder}_result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
-        f.write(json.dumps(results, indent=None) + "\n")
-
+        f.write(json.dumps(result_dict, indent=None) + "\n")
 
 
 async def main(labelled_prompts: list[Prompt]):
-    openai_embedder = OpenAITextEmbedder(OPENAI_API_KEY)
-    minilm_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH, 512)
-    await run(labelled_prompts, {"minilm": minilm_embedder})
+    revelium = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH, prompt_store_path=BENCHMARK_PROMPT_STORE_PATH))
+    # openai_revelium_client = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH, text_embedder="text-embedding-3-small", provider_api_key=OPENAI_API_KEY))
+    await run(revelium, labelled_prompts)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

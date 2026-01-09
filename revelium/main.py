@@ -14,7 +14,7 @@ from revelium.prompts.store import AsyncSQLitePromptStore
 from revelium.api.local import Revelium
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 
-from server.constants import MINILM_MODEL_PATH, DB_DIR
+from revelium.constants import MINILM_MODEL_PATH, DB_DIR
 
 ## DEV ONLY
 

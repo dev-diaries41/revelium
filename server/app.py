@@ -11,7 +11,7 @@ from smartscan.utils import  get_files_from_dirs
 from smartscan.indexer import DocIndexer
 from smartscan.providers import MiniLmTextEmbedder
 from server.indexer import FileIndexerWebSocketListener, FailMessage
-from server.constants import  DB_DIR, MINILM_MODEL_PATH
+from revelium.constants import  DB_DIR, MINILM_MODEL_PATH
 
 client = chromadb.PersistentClient(path=DB_DIR, settings=chromadb.Settings(anonymized_telemetry=False))
 
