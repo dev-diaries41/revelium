@@ -3,40 +3,22 @@ import string
 from placeholder_data import physics_sentences, quantum_mechanics_sentences, btc_analysis, forex_analysis, long_physics_sentences, long_btc_analysis, long_forex_analysis
 from revelium.prompts.types import Prompt
 ## DEV ONLY placeholders for getting data to cluster
-def strings_to_prompts(arr: list[str], label_prefix: str, n: int) -> list[Prompt]:
-    return [
-        Prompt(
-            prompt_id=f"{label_prefix}_{i}",
-            content=arr[i % len(arr)]
-        )
-        for i in range(n)
-    ]
+def strings_to_prompts(arr: list[str], label_prefix: str) -> list[Prompt]:
+    return [Prompt(prompt_id=f"{label_prefix}_{idx}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
 
-def get_placeholder_prompts(n: int = 100) -> list[Prompt]:
+def get_placeholder_prompts() -> list[Prompt]:
     all_data: list[Prompt] = []
-    all_data.extend(strings_to_prompts(long_physics_sentences, "physics", n))
-    all_data.extend(strings_to_prompts(quantum_mechanics_sentences, "quantum", n))
-    all_data.extend(strings_to_prompts(long_btc_analysis, "btc", n))
-    all_data.extend(strings_to_prompts(long_forex_analysis, "forex", n))
-
-    while len(all_data) < n:
-        all_data.extend(all_data)
+    all_data.extend(strings_to_prompts(long_physics_sentences, "physics"))
+    all_data.extend(strings_to_prompts(quantum_mechanics_sentences, "quantum"))
+    all_data.extend(strings_to_prompts(long_btc_analysis, "btc"))
+    all_data.extend(strings_to_prompts(long_forex_analysis, "forex"))
     return all_data
 
-def get_n_placeholder_prompts(n: int) -> list[Prompt]:
-    all_data: list[Prompt] = []
+def get_dummy_data(n: int = 100, offset = 0) -> list[Prompt]:
+    return [ Prompt(f"prompt_{i + offset}", random_string(550)) for i in range(n)]
 
-    def modified(arr: list[str], i: int) -> list[str]:
-        return [f"{s} [{i}]" for s in arr]
-
-    for i in range(n):
-        all_data.extend(strings_to_prompts(modified(long_physics_sentences, i), f"physics_{i}"))
-        all_data.extend(strings_to_prompts(modified(quantum_mechanics_sentences, i), f"quantum_{i}"))
-        all_data.extend(strings_to_prompts(modified(long_btc_analysis, i), f"btc_{i}"))
-        all_data.extend(strings_to_prompts(modified(long_forex_analysis, i), f"forex_{i}"))
-
-    return all_data
-
+def random_string(n):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=n))
 
 def get_label_counts():
     labels_count: dict[str, int] = {}
