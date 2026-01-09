@@ -2,14 +2,6 @@
 
 Revelium is a business-focused LLM analytics platform that turns real user prompts into actionable insights, optimized templates, cost analysis, and compliance monitoring.
 
-## Dev notes
-
-## TODO
-* In SmartScan-Lib updated ort sessio in `OnnxModel` n to use gpu if available. This allowing removing `asyncio.to_thread()` calls in BatchProcessor, and avoid threads entirely. Maybe add a BatchProcessorGPU and BatchProcessorCPU to make the differenc clear
-* Make indexer module with PromptIndexer
-* Add function to calculate prompt cost
-* Make metrics
-
 ## Design choices
 * Model: MiniLM-6 quant onnxruntime model
 * Max token length: MiniLM-l6 tokenizer used max length of 512 instead of 182
