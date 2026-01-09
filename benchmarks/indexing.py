@@ -11,7 +11,7 @@ from dataclasses import asdict
 from smartscan.providers import  MiniLmTextEmbedder, TextEmbeddingProvider
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.indexer_listener import DefaultIndexerListener
-from revelium.prompts.store import AsyncSQLitePromptStore, PromptStore
+from revelium.prompts.store import AsyncSQLitePromptStore
 from revelium.prompts.types import Prompt
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.data import get_dummy_data, get_placeholder_prompts
@@ -42,7 +42,7 @@ async def run(labelled_prompts: list[Prompt], embedders: dict[str, TextEmbedding
         collection_name = get_collection_name(model, embedder.embedding_dim)
         collection = client.get_or_create_collection(name=collection_name)
         embedding_store = ChromaDBEmbeddingStore(collection)
-        indexer = PromptIndexer(embedder, embedder._max_len, listener=DefaultIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store, batch_size=100, max_concurrency=4)
+        indexer = PromptIndexer(embedder, listener=DefaultIndexerListener(), prompt_store=prompt_store, embeddings_store=embedding_store, batch_size=100, max_concurrency=4)
         result =  await indexer.run(labelled_prompts)
         results[model] = {k: v for k, v in asdict(result).items() if k != "error"}
         print(f"{model}_result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")

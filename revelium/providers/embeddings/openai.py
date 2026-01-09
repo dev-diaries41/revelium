@@ -16,6 +16,10 @@ class OpenAITextEmbedder(TextEmbeddingProvider):
     @property
     def embedding_dim(self) -> int:
         return self._embedding_dim
+    
+    @property
+    def max_tokenizer_length(self) -> int:
+        return self._max_len
 
     def embed(self, data: str) -> np.ndarray:
         response = self.openai.embeddings.create(

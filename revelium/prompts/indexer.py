@@ -9,7 +9,6 @@ from revelium.prompts.types import Prompt
 class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
     def __init__(self, 
                 text_encoder: TextEmbeddingProvider,
-                max_tokenizer_length: int,
                 prompt_store: PromptStore,
                 embeddings_store: EmbeddingStore,
                 max_chunks: int | None = None,
@@ -18,7 +17,7 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
         super().__init__(**kwargs)
         self.text_encoder = text_encoder
         self.max_chunks = max_chunks
-        self.max_tokenizer_length = max_tokenizer_length
+        self.max_tokenizer_length = text_encoder.max_tokenizer_length
         self.prompt_store = prompt_store
         self.embeddings_store = embeddings_store
 
