@@ -11,13 +11,9 @@ from dataclasses import asdict
 from smartscan import  ItemId
 from smartscan.classify.types import ClusterResult
 from smartscan.classify import IncrementalClusterer, calculate_cluster_accuracy
-from revelium.data import get_placeholder_prompts
-from revelium.prompts.types import Prompt
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.utils.decorators import with_time
 from benchmarks.helpers import get_collection_name
-
-from server.constants import MINILM_MODEL_PATH, DB_DIR
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BENCHMARK_DIR = "output/benchmarks"
@@ -30,39 +26,52 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 
 @with_time
-def cluster(clusterer: IncrementalClusterer, query_result) -> tuple[ClusterResult, float]:
-    return clusterer.cluster(query_result.ids, query_result.embeddings)
+def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterResult, float]:
+    return clusterer.cluster(ids, embeddings)
 
-def run(labelled_prompts: list[Prompt], clusterer: IncrementalClusterer, clusters_info: dict[str, int]):
-    true_labels: dict[ItemId, str] = {}
-    for p in labelled_prompts:
-        true_labels[p.prompt_id] = p.prompt_id.split("_")[0]
-    item_ids = sorted(str(item_id) for item_id in true_labels.keys())
 
+# `prompt_id` must be prefixed with label e.g promptlabel_123
+# this is only for benchmarking
+def run(clusterer: IncrementalClusterer, clusters_info: dict[str, int]):
     results = {}
 
     for model, dim in clusters_info.items():
         clusterer.clear()
-        # Option A: instantiate a fresh clusterer for full isolation
-        # clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=True)
         ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
         # without reseeding causes non-deterministic clustering and lower accuracy. Reseed Python and 
         # before each clustering run to ensure reproducible results.
 
         random.seed(32)
 
-        # Create a fresh client per-model to avoid internal cache collisions
         client = chromadb.PersistentClient(path=BENCHMARK_CHROMADB_PATH, settings=chromadb.Settings(anonymized_telemetry=False))
         # Ensure collection name is unique per model/dim
         collection_name = get_collection_name(model, dim)
         collection = client.get_or_create_collection(name=collection_name)
-
         embedding_store = ChromaDBEmbeddingStore(collection)
-        query_result = embedding_store.get(ids=item_ids, include=['embeddings', 'metadatas'])
+        count = embedding_store.count()
+        ids, embeddings = [], []
 
-        result, time = cluster(clusterer, query_result)
+        limit = 500
+        offset = 0
+
+        while len(ids) < count:
+            query_result = embedding_store.get(include=['embeddings'], offset=offset, limit=limit)
+            ids.extend(query_result.ids)
+            embeddings.extend(query_result.embeddings)
+            offset += limit
+
+        result, time = cluster(clusterer, ids, embeddings)
         # for c in result.clusters.values():
         #     print(c.metadata)
+
+        true_labels: dict[ItemId, str] = {}
+        for prompt_id in ids:
+            label = prompt_id.split("_")[0]
+            if not label: 
+                print(f"[WARNING] {prompt_id} is not a valid labelled item.")
+                continue
+            true_labels[prompt_id] = label
+
         acc_info = calculate_cluster_accuracy(true_labels, result.assignments)
         bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
         results[collection_name] = bench
@@ -75,11 +84,10 @@ def run(labelled_prompts: list[Prompt], clusterer: IncrementalClusterer, cluster
         with open(BENCHMARK_ASSIGNMENTS_PATH, "w") as f:
             json.dump(result.assignments, f, indent=1, sort_keys=True)
 
-# `prompt_id` must be prefixed with label e.g promptlabel_123
-# this is only for benchmarking
-def main(labelled_prompts: list[Prompt]):
+
+def main():
     clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=True)
-    run(labelled_prompts, clusterer, {"minilm": 384, "openai": 1536})
+    run(clusterer, {"minilm": 384})
 
 
-main(get_placeholder_prompts())
+main()
