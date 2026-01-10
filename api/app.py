@@ -56,32 +56,24 @@ class AddPromptsRequest(BaseModel):
 async def add_prompts(req: AddPromptsRequest):
     try:
         if len(req.prompts) == 0:
-            raise (HTTPException(status_code=400, detail="Missing prompts"))
+            raise HTTPException(status_code=400, detail="Missing prompts")
         # Note: This approach my be temp
         result = await revelium.index_prompts(req.prompts)
         if hasattr(result, "error" ):
              raise result.error
         result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
     except Exception as e:
-            print(e)
             raise HTTPException(status_code=500, detail="Error adding prompts")
     return JSONResponse(result_dict)
 
 
-class ClusterMetricsRequest(BaseModel):
-    clusrer_id: str
-
-@app.get("/api/cluster/metrics")
-async def get_cluster_metrics(req: ClusterMetricsRequest):
+@app.get("/api/cluster/metadata")
+async def get_cluster_metadata(cluster_id: str):
     try:
-        result = await revelium.index(req.prompts)
-        if hasattr(result, "error" ):
-             raise result.error
-        result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
+        metadata = await run_in_threadpool(revelium.get_cluster_metadata, cluster_id)
     except Exception as e:
-            print(e)
-            raise HTTPException(status_code=500, detail="Error adding prompts")
-    return JSONResponse(result_dict)
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse({"metadata": metadata})
 
 
 @app.get("/api/prompts/count")

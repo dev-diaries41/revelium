@@ -20,6 +20,16 @@ class ReveliumClient:
                 raise Exception(f"Error adding prompts: {resp.text}")
             return resp.json()
 
+    async def get_cluster_metadata(self, cluster_id: str) -> dict:
+        url = f"{self.base_url}/api/cluster/metadata"
+        payload = {"cluster_id": cluster_id}
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, params=payload)
+            if resp.status_code != 200:
+                raise Exception(f"Error getting metadata: {resp.text}")
+            return resp.json()
+
    
     async def count_prompts(self) -> int:
         url = f"{self.base_url}/api/prompts/count"

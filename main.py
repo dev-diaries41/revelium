@@ -18,4 +18,6 @@ async def main():
     # Count clusters
     print("Total clusters:", await client.count_clusters())
 
+    print("Cluster metadata:", await client.get_cluster_metadata("fce4cfdc44b3ea3f"))
+
 asyncio.run(main())
