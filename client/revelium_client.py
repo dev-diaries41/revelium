@@ -1,7 +1,6 @@
 from typing import List
 import httpx
 from revelium.prompts.types import Prompt
-from dataclasses import asdict
 
 class ReveliumClient:
     def __init__(self, base_url: str):
@@ -12,7 +11,7 @@ class ReveliumClient:
         url = f"{self.base_url}/api/prompts/add"
         # Convert dataclasses to dicts
         # TODD: chane prompts to pydantic basemodel
-        payload = {"prompts": [asdict(p) for p in prompts]}
+        payload = {"prompts": [p.model_dump() for p in prompts]}
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload)

@@ -7,8 +7,8 @@ async def main():
 
     # Add prompts via JSON body
     prompts = [
-        Prompt("prompt_test_1", "Summarize Q4 sales"),
-        Prompt("prompt_test_2", "Summarize Q2 sales"),
+        Prompt(prompt_id = "prompt_test_1", content="Summarize Q4 sales"),
+        Prompt(prompt_id = "prompt_test_2", content="Summarize Q2 sales"),
     ]
     print(await client.add_prompts(prompts=prompts))
 
