@@ -3,7 +3,7 @@ import chromadb
 
 from numpy import ndarray
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Iterable
 from dataclasses import asdict
 
 from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult
@@ -72,21 +72,21 @@ class Revelium():
         return self.indexer.listener == index_listener
     
     def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
-        existing_labels = self._get_all_cluster_labels()
+        existing_labels = self.get_existing_labels()
         prompts = self.prompt_embedding_store.get(filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
         sample_prompts = [content for content in prompts.datas]
         input_prompt = self._get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
 
     def cluster_prompts(self) -> ClusterResult:
-        ids, embeddings = self._get_all_prompt_embeddings()
-        existing_clusters = self._get_existing_clusters()
+        ids, embeddings = self.get_all_prompt_embeddings()
+        existing_clusters = self.get_existing_clusters()
         self.clusterer.clusters = existing_clusters # temp workaround, updated a clearner way
         return self.clusterer.cluster(ids, embeddings)
                
     async def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
         prompt_ids = [str(k) for k in assignments.keys()]
-        metadatas = self._get_prompts_metadata(prompt_ids)
+        metadatas = self.get_prompts_metadata(prompt_ids)
         updated_at = datetime.now().isoformat()
         updated_prompts: list[ItemEmbedding] = []
 
@@ -151,25 +151,16 @@ class Revelium():
     def calculate_prompt_cost(self, prompt: Prompt, price_per_1m_tokens: float, model: str | TextEmbeddingModel) -> float:
         return embedding_token_cost(prompt.content, price_per_1m_tokens, model)
 
-    # helps ensure each collection get embeddings of the right size
-    def _get_embedding_collection_name(self, type: str, model: TextEmbeddingModel, embed_dim: int) -> str:
-        return f"{type}_{model}_{embed_dim}_collection"
-    
-    def _get_text_embedder(self, model: TextEmbeddingModel, provider_api_key: Optional[str] = None) -> TextEmbeddingProvider:
-        if model == ("text-embedding-3-large" or "text-embedding-3-small"):
-            if provider_api_key is None:
-                raise ValueError("Missing OpenAI API key")
-            return OpenAITextEmbedder(provider_api_key, model=model)
-        else:
-            return MiniLmTextEmbedder(MINILM_MODEL_PATH, MINILM_MAX_TOKENS)
-
-    def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
-        return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
-    
-    def _get_all_prompt_embeddings(self) -> tuple[list[ItemId], list[ndarray]]:
-        count = self.prompt_embedding_store.count()
-        ids: list[str] = []
+    def get_all_prompt_embeddings(self) -> tuple[list[ItemId], list[ndarray]]:
+        ids: list[ItemId] = []
         embeddings: list[ndarray] = []
+        for id_, emb in self.iter_prompt_embeddings():
+            ids.append(id_)
+            embeddings.append(emb)
+        return ids, embeddings
+    
+    def iter_prompt_embeddings(self) -> Iterable[tuple[ItemId, ndarray]]:
+        count = self.prompt_embedding_store.count()
         for batch in paginated_read(
             lambda offset, limit: self.prompt_embedding_store.get(
                 include=["embeddings"],
@@ -179,13 +170,29 @@ class Revelium():
             total=count,
             limit=500,
             ):
-            ids.extend(batch.ids)
-            embeddings.extend(batch.embeddings)
-        return ids, embeddings
+            yield from zip(batch.ids, batch.embeddings)
+
+    def get_prompts_by_ids(self, ids: list[str]) -> list[Prompt]:
+        return list(self.iter_prompts_by_ids(ids))
+    
+    def iter_prompts_by_ids(self, ids: list[str]) -> Iterable[Prompt]:
+        for batch in paginated_read(
+            lambda offset, limit: self.prompt_embedding_store.get(
+                ids = ids,
+                include=["metadatas", "documents"],
+                offset=offset,
+                limit=limit,
+            ),
+            total=len(ids),
+            limit=500,
+            ):
+            yield from [ Prompt(prompt_id, prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(batch.ids, batch.metadatas, batch.datas)]
+
+    def get_prompts_metadata(self, ids: list[str]) -> list[PromptMetadata]:
+        return list(self.iter_prompts_metadata(ids))
     
 
-    def _get_prompts_metadata(self, ids: list[str]) -> list[PromptMetadata]:
-        metadatas: list[PromptMetadata] = []
+    def iter_prompts_metadata(self, ids: list[str]) -> Iterable[PromptMetadata]:
         for batch in paginated_read(
             lambda offset, limit: self.prompt_embedding_store.get(
                 ids = ids,
@@ -196,10 +203,9 @@ class Revelium():
             total=len(ids),
             limit=500,
             ):
-            metadatas.extend([ PromptMetadata(**m) for m in batch.metadatas])
-        return metadatas
-    
-    def _get_all_cluster_labels(self) -> list[str]:
+            yield from [ PromptMetadata(**m) for m in batch.metadatas]   
+
+    def get_existing_labels(self) -> list[str]:
         labels: list[str] = []
         for batch in paginated_read_until_empty(
             fetch_fn=lambda offset, limit: self.cluster_embedding_store.get(
@@ -213,7 +219,7 @@ class Revelium():
             labels.extend([m.get("label") for m in batch.metadatas])
         return labels
     
-    def _get_existing_clusters(self) -> dict[ClusterId, BaseCluster]:
+    def get_existing_clusters(self) -> dict[ClusterId, BaseCluster]:
         clusters: Dict[ClusterId, BaseCluster] = {}
         for batch in paginated_read_until_empty(
             fetch_fn=lambda offset, limit: self.cluster_embedding_store.get(
@@ -229,3 +235,19 @@ class Revelium():
                 print(copy_meta)
                 clusters[cluster_id] = BaseCluster(cluster_id, embedding, ClusterMetadata(**copy_meta), label=metadata.get("label"))
         return clusters
+    
+    # helps ensure each collection get embeddings of the right size
+    def _get_embedding_collection_name(self, type: str, model: TextEmbeddingModel, embed_dim: int) -> str:
+        return f"{type}_{model}_{embed_dim}_collection"
+    
+    def _get_text_embedder(self, model: TextEmbeddingModel, provider_api_key: Optional[str] = None) -> TextEmbeddingProvider:
+        if model == ("text-embedding-3-large" or "text-embedding-3-small"):
+            if provider_api_key is None:
+                raise ValueError("Missing OpenAI API key")
+            return OpenAITextEmbedder(provider_api_key, model=model)
+        else:
+            return MiniLmTextEmbedder(MINILM_MODEL_PATH, MINILM_MAX_TOKENS)
+
+    def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
+        return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
+    
