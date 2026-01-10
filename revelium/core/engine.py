@@ -28,7 +28,6 @@ from revelium.utils import  paginated_read, paginated_read_until_empty
 
 
 class Revelium():
-    UNLABELLED = "unlabelled"
     CLUSTER_TYPE = "cluster"
     PROMPT_TYPE = "prompt"
 
@@ -208,7 +207,7 @@ class Revelium():
         labels: list[str] = []
         for batch in paginated_read_until_empty(
             fetch_fn=lambda offset, limit: self.cluster_embedding_store.get(
-                include=['metadatas'], filter={"label": {"$ne": self.UNLABELLED}},
+                include=['metadatas'], filter={"label": {"$ne": Cluster.UNLABELLED}},
                 limit=limit,
                 offset=offset
                 ),
