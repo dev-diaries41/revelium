@@ -1,15 +1,13 @@
 import os 
 
-from fastapi import FastAPI, HTTPException,  WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
-from fastapi import  UploadFile, Body
-import json
 
 from typing import List
+from dataclasses import asdict
 from pydantic import BaseModel, Field
-from api.indexer import BaseWebSocketListener, FailMessage
 from revelium.core.engine import Revelium, ReveliumConfig
 from revelium.prompts.types import Prompt
 
@@ -21,6 +19,8 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
 revelium = Revelium(config=ReveliumConfig(provider_api_key=OPENAI_API_KEY))
+revelium.text_embedder.init()
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -57,11 +57,15 @@ async def add_prompts(req: AddPromptsRequest):
     try:
         if len(req.prompts) == 0:
             raise (HTTPException(status_code=400, detail="Missing prompts"))
-        
-        # await revelium.prompt_embedding_store.add(req.prompts)
-    except Exception as _:
-            raise HTTPException(status_code=500, detail="Error counting items in collection")
-    return JSONResponse({"prompts_added": len(req.prompts)})
+        # Note: This approach my be temp
+        result = await revelium.index(req.prompts)
+        if hasattr(result, "error" ):
+             raise result.error
+        result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
+    except Exception as e:
+            print(e)
+            raise HTTPException(status_code=500, detail="Error adding prompts")
+    return JSONResponse(result_dict)
 
 
 

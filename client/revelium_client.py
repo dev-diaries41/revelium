@@ -9,11 +9,9 @@ class ReveliumClient:
 
 
     async def add_prompts(self, prompts: List[Prompt]) -> dict:
-        """
-        Send prompts to the POST /api/prompts/add endpoint.
-        """
         url = f"{self.base_url}/api/prompts/add"
         # Convert dataclasses to dicts
+        # TODD: chane prompts to pydantic basemodel
         payload = {"prompts": [asdict(p) for p in prompts]}
 
         async with httpx.AsyncClient() as client:
