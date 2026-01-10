@@ -11,15 +11,14 @@ from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
 from smartscan.processor import ProcessorListener
-
+from smartscan.embeds.types import ItemEmbeddingUpdate
 from revelium.constants import MINILM_MODEL_PATH, DB_DIR, MINILM_MAX_TOKENS
 from revelium.prompts.indexer import PromptIndexer
-from revelium.prompts.types import Prompt
+from revelium.prompts.types import Prompt, PromptMetadata
 from revelium.tokens import embedding_token_cost
 from revelium.schemas.llm import LLMClassificationResult
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.indexer_listener import ProgressBarIndexerListener
-from revelium.prompts.store import AsyncSQLitePromptStore, PromptStore
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
@@ -41,7 +40,6 @@ class Revelium():
         llm_client: Optional[LLMClient] = None,
         clusterer: Optional[IncrementalClusterer] = None,
         indexer_listener: Optional[ProcessorListener] = None,
-        prompt_store: Optional[PromptStore] = None,
         cluster_embedding_store: Optional[EmbeddingStore] = None,
         prompt_embedding_store: Optional[EmbeddingStore] = None,
                  ):
@@ -65,18 +63,18 @@ class Revelium():
                 )
             ) 
         
-        self.prompt_store = prompt_store or AsyncSQLitePromptStore(self.config.prompt_store_path)
-        self.indexer =  PromptIndexer(self.text_embedder, listener= indexer_listener or ProgressBarIndexerListener(), prompt_store=self.prompt_store, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
+        self.indexer =  PromptIndexer(self.text_embedder, listener=indexer_listener or ProgressBarIndexerListener(), embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
     
     async def index(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
     
-    async def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+    def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
         existing_labels = self._get_all_cluster_labels()
-        prompts = await self.prompt_store.get(cluster_id=cluster_id, limit=sample_size)
-        sample_prompts = [p.content for p in prompts]
+        prompts = self.prompt_embedding_store.get(filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
+        sample_prompts = [content for content in prompts.datas]
         input_prompt = self._get_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
+
         
     def cluster(self):
         ids, embeddings = self._get_all_prompt_embeddings()
@@ -84,12 +82,12 @@ class Revelium():
                
     async def update_prompts(self, assignments: Assignments, merges: ClusterMerges):
         prompt_ids = [str(k) for k in assignments.keys()]
-        prompts = await self.prompt_store.get_by_ids(prompt_ids)
-        updated_at = datetime.now()
-        updated_prompts: list[Prompt] = []
+        metadatas = self._get_prompts_metadata(prompt_ids)
+        updated_at = datetime.now().isoformat()
+        updated_prompts: list[ItemEmbedding] = []
 
-        for p in prompts:
-            original_cluster = assignments[p.prompt_id]
+        for prompt_id, metadata in zip(prompt_ids, metadatas):
+            original_cluster = assignments[prompt_id]
 
             if not merges:
                 new_cluster = original_cluster
@@ -101,17 +99,14 @@ class Revelium():
                 )
 
             updated_prompts.append(
-                Prompt(
-                    p.prompt_id,
-                    p.content,
-                    created_at=p.created_at,
-                    updated_at=updated_at,
-                    cluster_id=new_cluster,
+                ItemEmbeddingUpdate(
+                    prompt_id,
+                    metadata=asdict(PromptMetadata(cluster_id=new_cluster, created_at=metadata.created_at, updated_at=updated_at))
                 )
             )
         # print(f"length of updated: {len(updated_prompts)}")
 
-        await self.prompt_store.update(updated_prompts)
+        self.prompt_embedding_store.update(updated_prompts)
 
 
     def update_clusters(self, clusters: Dict[str, BaseCluster], merges: ClusterMerges | None = None):
@@ -138,7 +133,7 @@ class Revelium():
         if merges:
             self.cluster_embedding_store.delete(list(merged_ids))
 
-        self.cluster_embedding_store.upsert(cluster_embeddings)
+        self.cluster_embedding_store.update(cluster_embeddings)
 
 
     def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments):
@@ -179,11 +174,27 @@ class Revelium():
             embeddings.extend(batch.embeddings)
         return ids, embeddings
     
+
+    def _get_prompts_metadata(self, ids: list[str]):
+        metadatas: list[PromptMetadata] = []
+        for batch in paginated_read(
+            lambda offset, limit: self.prompt_embedding_store.get(
+                ids = ids,
+                include=["metadatas"],
+                offset=offset,
+                limit=limit,
+            ),
+            total=len(ids),
+            limit=500,
+            ):
+            metadatas.extend([ PromptMetadata(**m) for m in batch.metadatas])
+        return metadatas
+    
     def _get_all_cluster_labels(self):
         labels: list[str] = []
         for batch in paginated_read_until_empty(
             lambda offset, limit: self.cluster_embedding_store.get(
-                include=['metadatas'], filter={"$ne": self.UNLABELLED},
+                include=['metadatas'], filter={"label": {"$ne": self.UNLABELLED}},
                 limit=limit,
                 offset=offset
                 ),

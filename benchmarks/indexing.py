@@ -22,10 +22,6 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 # this is only for benchmarking
 async def run(revelium_client: Revelium, labelled_prompts: list[Prompt]):
     revelium_client.text_embedder.init()
-    count = await  revelium_client.prompt_store.count()
-    if count == 0:
-        await revelium_client.prompt_store.add(labelled_prompts)
-   
     result =  await revelium_client.index(labelled_prompts)
     result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
     print(f"{revelium_client.config.text_embedder}_result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")

@@ -46,22 +46,22 @@ class AddPromptsRequest(BaseModel):
     prompts: List[Prompt]
 
 
-@app.get("/api/prompts/add")
-async def add_prompts(req: AddPromptsRequest):
-    try:
-        if len(req.prompts) == 0:
-            raise (HTTPException(status_code=400, detail="Missing prompts"))
+# @app.get("/api/prompts/add")
+# async def add_prompts(req: AddPromptsRequest):
+#     try:
+#         if len(req.prompts) == 0:
+#             raise (HTTPException(status_code=400, detail="Missing prompts"))
         
-        await revelium.prompt_store.add(req.prompts)
-    except Exception as _:
-            raise HTTPException(status_code=500, detail="Error counting items in collection")
-    return JSONResponse({"prompts_added": len(req.prompts)})
+#         await revelium.prompt_store.add(req.prompts)
+#     except Exception as _:
+#             raise HTTPException(status_code=500, detail="Error counting items in collection")
+#     return JSONResponse({"prompts_added": len(req.prompts)})
 
 
 @app.get("/api/prompts/count")
 async def count_prompts():
     try:
-        count = await revelium.prompt_store.count()
+        count = await revelium.prompt_embedding_store.count()
     except Exception as _:
             raise HTTPException(status_code=500, detail="Error counting items in collection")
     return JSONResponse({"count": count})

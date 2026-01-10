@@ -12,12 +12,28 @@ def paginated_read(fetch_fn: Callable[[int, int], T], total: int, limit: int = 5
         offset += limit
 
 
+
 def paginated_read_until_empty(fetch_fn: Callable[[int, int], T], limit: int = 500,) -> Iterator[T]:
+    def is_empty_batch(batch: T) -> bool:
+        if batch is None:
+            return True
+        if isinstance(batch, dict):
+            return not any(batch.values())
+        if hasattr(batch, '__dict__'):
+            return not any(
+                getattr(batch, k) is not None and getattr(batch, k) != []
+                for k in batch.__dict__
+            )
+        return False 
+
     offset = 0
     while True:
         batch = fetch_fn(offset, limit)
-        if not batch:
+        if is_empty_batch(batch):
             break
+        if isinstance(batch, dict):
+            if not any(batch.values()):
+                break
         yield batch
         offset += limit
 

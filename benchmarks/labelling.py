@@ -15,7 +15,9 @@ BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "labelling_benchmarks.jsonl"
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 async def run(revelium: Revelium, cluster_id: str, sample_size: int):
-    result = await revelium.label_prompts(cluster_id, sample_size)
+    result = revelium.label_prompts(cluster_id, sample_size)
+
+    print(result)
     
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
         json.dump(result.model_dump(), f, indent=1)
