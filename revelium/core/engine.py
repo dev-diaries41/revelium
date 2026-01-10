@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Dict, Optional, Iterable
 
 from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult
+from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
@@ -230,9 +231,7 @@ class Revelium():
             limit=500
             ):
             for cluster_id, embedding, metadata in zip(batch.ids, batch.embeddings, batch.metadatas):
-                copy_meta = {k:v for k,v in dict(metadata).items() if k != "label"}
-                print(copy_meta)
-                clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**copy_meta), label=metadata.get("label"))
+                clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
         return clusters
     
     # helps ensure each collection get embeddings of the right size
