@@ -1,8 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from typing import Optional, List
+from smartscan import Assignments
 
-def plot_clusters(ids, embeddings, cluster_result, method='tsne', random_state=42):
+
+def plot_clusters(ids: List[str], embeddings: List[np.ndarray], assignments: Assignments, method='tsne', random_state=42, output_path: Optional[str] = None):
     """
     Plots clusters from ClusterResult using 2D embeddings.
 
@@ -25,8 +28,8 @@ def plot_clusters(ids, embeddings, cluster_result, method='tsne', random_state=4
         raise ValueError("method must be 'tsne' or 'pca'")
 
     # Get cluster IDs for each item
-    assignments = cluster_result.assignments
-    cluster_ids = [assignments.get(i, 'unassigned') for i in ids]
+    assignments = assignments
+    cluster_ids = [assignments.get(i) for i in ids]
 
     # Assign a color to each cluster
     unique_clusters = list(set(cluster_ids))
@@ -39,10 +42,12 @@ def plot_clusters(ids, embeddings, cluster_result, method='tsne', random_state=4
         idxs = [i for i, c in enumerate(cluster_ids) if c == cid]
         plt.scatter(reduced[idxs, 0], reduced[idxs, 1], color=color_map[cid], label=cid, s=50, edgecolor='k')
 
-    plt.title("Cluster Visualization")
+    plt.title("Prompt Clusters")
     plt.xlabel("Dimension 1")
     plt.ylabel("Dimension 2")
     plt.legend(markerscale=2, bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     plt.show()
-    plt.savefig("plot.png")
+    
+    if output_path:
+        plt.savefig(output_path)
