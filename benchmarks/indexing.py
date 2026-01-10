@@ -10,6 +10,7 @@ from dataclasses import asdict
 from revelium.prompts.types import Prompt
 from revelium.data import get_dummy_data, get_placeholder_prompts
 from revelium.core.engine import Revelium, ReveliumConfig
+from revelium.prompts.indexer_listener import ProgressBarIndexerListener
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 
 
@@ -31,6 +32,7 @@ async def run(revelium_client: Revelium, labelled_prompts: list[Prompt]):
 
 async def main(labelled_prompts: list[Prompt]):
     revelium = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH, prompt_store_path=BENCHMARK_PROMPT_STORE_PATH))
+    revelium.update_index_listener(ProgressBarIndexerListener())
     # openai_revelium_client = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH, text_embedder="text-embedding-3-small", provider_api_key=OPENAI_API_KEY))
     await run(revelium, labelled_prompts)
 

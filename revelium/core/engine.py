@@ -67,7 +67,7 @@ class Revelium():
     async def index_prompts(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
     
-    def update_index_listenr(self, index_listener: ProcessorListener) -> bool:
+    def update_index_listener(self, index_listener: ProcessorListener) -> bool:
         self.indexer.listener = index_listener
         return self.indexer.listener == index_listener
     
