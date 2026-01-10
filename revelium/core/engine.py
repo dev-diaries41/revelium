@@ -64,7 +64,7 @@ class Revelium():
         
         self.indexer =  PromptIndexer(self.text_embedder, listener=indexer_listener, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
     
-    async def index(self, prompts: List[Prompt]):
+    async def index_prompts(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
     
     def update_index_listenr(self, index_listener: ProcessorListener) -> bool:
@@ -78,8 +78,7 @@ class Revelium():
         input_prompt = self._get_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
 
-        
-    def cluster(self):
+    def cluster_prompts(self):
         ids, embeddings = self._get_all_prompt_embeddings()
         return self.clusterer.cluster(ids, embeddings)
                
@@ -112,7 +111,7 @@ class Revelium():
         self.prompt_embedding_store.update(updated_prompts)
 
 
-    def update_clusters(self, clusters: Dict[str, BaseCluster], merges: ClusterMerges | None = None):
+    def update_clusters(self, clusters: Dict[str, BaseCluster], merges: ClusterMerges):
         """
         Update the embedding store with clusters, applying merges if provided.
         Old clusters that have been merged are removed from the store.
@@ -138,7 +137,7 @@ class Revelium():
 
         self.cluster_embedding_store.update(cluster_embeddings)
 
-
+    
     def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments):
         return calculate_cluster_accuracy(true_labels, predicted_clusters)
     
