@@ -3,9 +3,12 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 
+from typing import List
+from pydantic import BaseModel, Field
 from api.indexer import PromptIndexerWebSocketListener
 from api.indexer import PromptIndexerWebSocketListener, FailMessage
 from revelium.core.engine import Revelium
+from revelium.prompts.types import Prompt
 
 revelium = Revelium(indexer_listener=PromptIndexerWebSocketListener())
 
@@ -21,15 +24,13 @@ app.add_middleware(
 )
 
 @app.websocket("/ws/index/")
-async def index(ws: WebSocket):
+async def index_prompts(ws: WebSocket):
     await ws.accept()
     try:
         msg = await ws.receive_json()
         if msg.get("action") == "index":
-            # dirpaths = msg.get("dirs", [])
-            # files = get_files_from_dirs(dirpaths, allowed_exts=allowed_exts)
-            # filtered_files = _filter(files, revelium.prompt_embedding_store)
-            # await revelium.indexer.run(filtered_files)
+            # TODO:  retreive prompts
+            # await revelium.index(prompts)
             await ws.close()
         else: 
             await ws.send_json(FailMessage(error="invalid action").model_dump())
@@ -40,8 +41,25 @@ async def index(ws: WebSocket):
         print("Client disconnected")
 
 
-@app.get("/api/count/prompts")
-async def count_documents_collection():
+
+class AddPromptsRequest(BaseModel):
+    prompts: List[Prompt]
+
+
+@app.get("/api/prompts/add")
+async def add_prompts(req: AddPromptsRequest):
+    try:
+        if len(req.prompts) == 0:
+            raise (HTTPException(status_code=400, detail="Missing prompts"))
+        
+        await revelium.prompt_store.add(req.prompts)
+    except Exception as _:
+            raise HTTPException(status_code=500, detail="Error counting items in collection")
+    return JSONResponse({"prompts_added": len(req.prompts)})
+
+
+@app.get("/api/prompts/count")
+async def count_prompts():
     try:
         count = await revelium.prompt_store.count()
     except Exception as _:
@@ -49,8 +67,8 @@ async def count_documents_collection():
     return JSONResponse({"count": count})
 
 
-@app.get("/api/count/clusters")
-async def count_documents_collection():
+@app.get("/api/clusters/count")
+async def count_clusters():
     try:
         count = await revelium.cluster_embedding_store.count()
     except Exception as _:
