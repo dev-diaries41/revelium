@@ -148,8 +148,8 @@ class Revelium():
     def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments) -> ClusterAccuracy:
         return calculate_cluster_accuracy(true_labels, predicted_clusters)
     
-    def calculate_prompt_cost(self, prompt: Prompt, price_per_1m_tokens: float, model: str | TextEmbeddingModel) -> float:
-        return embedding_token_cost(prompt.content, price_per_1m_tokens, model)
+    def calculate_prompt_cost(self, prompt_content, price_per_1m_tokens: float, model:  TextEmbeddingModel) -> float:
+        return embedding_token_cost(prompt_content, price_per_1m_tokens, model)
 
     def get_all_prompt_embeddings(self) -> tuple[list[ItemId], list[ndarray]]:
         ids: list[ItemId] = []
