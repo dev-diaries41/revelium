@@ -1,10 +1,10 @@
 import tiktoken
-from smartscan import ModelName
+from revelium.providers.types import TextEmbeddingModel
 from smartscan.providers import MiniLmTextEmbedder
 from revelium.constants import MINILM_MODEL_PATH
 
 
-def count_tokens_embedding(text: str, model: str | ModelName = "text-embedding-3-large") -> int:
+def count_tokens_embedding(text: str, model: TextEmbeddingModel) -> int:
     if model == "all-minilm-l6-v2":
         text_embedder = MiniLmTextEmbedder(MINILM_MODEL_PATH)
         padded_tkns = text_embedder._tokenize(text)
@@ -14,7 +14,7 @@ def count_tokens_embedding(text: str, model: str | ModelName = "text-embedding-3
         return len(enc.encode(text))
 
 
-def embedding_token_cost(text: str, price_per_1m_tokens: float, model: str | ModelName = "text-embedding-3-large") -> float:
+def embedding_token_cost(text: str, price_per_1m_tokens: float, model: TextEmbeddingModel) -> float:
     tokens = count_tokens_embedding(text, model)
     return tokens * (price_per_1m_tokens / 1_000_000)
     
