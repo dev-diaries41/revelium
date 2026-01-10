@@ -16,4 +16,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["server", "revelium"]
+packages = ["api", "revelium"]
