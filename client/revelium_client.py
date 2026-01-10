@@ -15,35 +15,53 @@ class ReveliumClient:
         payload = {"prompts": [asdict(p) for p in prompts]}
 
         async with httpx.AsyncClient() as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code != 200:
-                raise Exception(f"Error adding prompts: {resp.text}")
-            return resp.json()
+            res = await client.post(url, json=payload)
+            if res.status_code != 200:
+                raise Exception(f"Error adding prompts: {res.text}")
+            return res.json()
+        
+    async def get_prompts(self, ids: List[str]) -> dict:
+        url = f"{self.base_url}/api/prompts/"
+        payload = {"prompt_ids": ids}
+
+        async with httpx.AsyncClient() as client:
+            res = await client.post(url, json=payload)
+            if res.status_code != 200:
+                raise Exception(f"Error adding prompts: {res.text}")
+            return res.json()
 
     async def get_cluster_metadata(self, cluster_id: str) -> dict:
-        url = f"{self.base_url}/api/cluster/metadata"
+        url = f"{self.base_url}/api/clusters/metadata"
         payload = {"cluster_id": cluster_id}
 
         async with httpx.AsyncClient() as client:
-            resp = await client.get(url, params=payload)
-            if resp.status_code != 200:
-                raise Exception(f"Error getting metadata: {resp.text}")
-            return resp.json()
+            res = await client.get(url, params=payload)
+            if res.status_code != 200:
+                raise Exception(f"Error getting metadata: {res.text}")
+            return res.json()
 
    
     async def count_prompts(self) -> int:
         url = f"{self.base_url}/api/prompts/count"
         async with httpx.AsyncClient() as client:
-            resp = await client.get(url)
-            if resp.status_code != 200:
-                raise Exception(f"Error counting prompts: {resp.text}")
-            return resp.json().get("count", 0)
+            res = await client.get(url)
+            if res.status_code != 200:
+                raise Exception(f"Error counting prompts: {res.text}")
+            return res.json().get("count", 0)
 
    
     async def count_clusters(self) -> int:
         url = f"{self.base_url}/api/clusters/count"
         async with httpx.AsyncClient() as client:
-            resp = await client.get(url)
-            if resp.status_code != 200:
-                raise Exception(f"Error counting clusters: {resp.text}")
-            return resp.json().get("count", 0)
+            res = await client.get(url)
+            if res.status_code != 200:
+                raise Exception(f"Error counting clusters: {res.text}")
+            return res.json().get("count", 0)
+
+    async def get_existing_labels(self) -> list[str]:
+        url = f"{self.base_url}/api/labels"
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url)
+            if res.status_code != 200:
+                raise Exception(f"Error getting labels: {res.text}")
+            return res.json().get("labels")

@@ -20,4 +20,9 @@ async def main():
 
     print("Cluster metadata:", await client.get_cluster_metadata("fce4cfdc44b3ea3f"))
 
+    print("Prompts:", await client.get_prompts([p.prompt_id for p in prompts]))
+
+    print("Labels:", await client.get_existing_labels())
+
+
 asyncio.run(main())

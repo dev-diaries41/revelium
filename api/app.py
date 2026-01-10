@@ -67,13 +67,20 @@ async def add_prompts(req: AddPromptsRequest):
     return JSONResponse(result_dict)
 
 
-@app.get("/api/cluster/metadata")
-async def get_cluster_metadata(cluster_id: str):
+
+class GetPromptsRequest(BaseModel):
+    prompt_ids: List[str]
+
+
+@app.post("/api/prompts/")
+async def get_prompts(req: GetPromptsRequest):
     try:
-        metadata = await run_in_threadpool(revelium.get_cluster_metadata, cluster_id)
+        if len(req.prompt_ids) == 0:
+            raise HTTPException(status_code=400, detail="Missing prompt ids")
+        prompts = await run_in_threadpool(revelium.get_prompts_by_ids, req.prompt_ids)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
-    return JSONResponse({"metadata": metadata})
+    return JSONResponse({"prompts": [asdict(p) for p in prompts]})
 
 
 @app.get("/api/prompts/count")
@@ -85,6 +92,15 @@ async def count_prompts():
     return JSONResponse({"count": count})
 
 
+@app.get("/api/clusters/metadata")
+async def get_cluster_metadata(cluster_id: str):
+    try:
+        metadata = await run_in_threadpool(revelium.get_cluster_metadata, cluster_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse({"metadata": metadata})
+
+
 @app.get("/api/clusters/count")
 async def count_clusters():
     try:
@@ -92,3 +108,11 @@ async def count_clusters():
     except Exception as _:
             raise HTTPException(status_code=500, detail="Error counting items in collection")
     return JSONResponse({"count": count})
+
+@app.get("/api/labels")
+async def get_existing_labels():
+    try:
+        labels = await run_in_threadpool(revelium.get_existing_labels)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse({"labels": labels})
