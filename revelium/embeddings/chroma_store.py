@@ -16,7 +16,7 @@ class ChromaDBEmbeddingStore(EmbeddingStore[str, chromadb.CollectionMetadata]):
             documents.append(item.data)
         self.chroma_colletion.add(ids, embeddings, metadatas, documents=documents)
     
-    def get(self, ids = None, filter = None, limit = None, offset = None, include = ["metadatas", "embeddings"]) ->  GetResult:
+    def get(self, ids = None, filter = None, limit = None, offset = None, include = ["metadatas", "embeddings"]) ->  GetResult[str, chromadb.CollectionMetadata]:
         result = self.chroma_colletion.get(ids, where=filter, limit=limit, offset=offset, include = include)
         return GetResult(ids=result["ids"], embeddings=result['embeddings'], metadatas=result['metadatas'], datas=result['documents'])
     
@@ -40,7 +40,7 @@ class ChromaDBEmbeddingStore(EmbeddingStore[str, chromadb.CollectionMetadata]):
     def delete(self, ids = None, filter = None):
         return self.chroma_colletion.delete(ids,filter)
     
-    def query(self, query_embeds, filter = None, limit = 10, include = ["metadatas", "embeddings"]) -> GetResult:
+    def query(self, query_embeds, filter = None, limit = 10, include = ["metadatas", "embeddings"]) -> QueryResult[str, chromadb.CollectionMetadata]:
         result = self.chroma_colletion.query(query_embeddings=query_embeds, where=filter, include=include, n_results=limit)
         return QueryResult(ids=result["ids"], embeddings=result['embeddings'], metadatas=result['metadatas'], sims=result['distances'], datas=result['documents'])
     
