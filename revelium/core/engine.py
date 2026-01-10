@@ -18,7 +18,6 @@ from revelium.prompts.types import Prompt, PromptMetadata
 from revelium.tokens import embedding_token_cost
 from revelium.schemas.llm import LLMClassificationResult
 from revelium.prompts.indexer import PromptIndexer
-from revelium.prompts.indexer_listener import ProgressBarIndexerListener
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
@@ -63,10 +62,14 @@ class Revelium():
                 )
             ) 
         
-        self.indexer =  PromptIndexer(self.text_embedder, listener=indexer_listener or ProgressBarIndexerListener(), embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
+        self.indexer =  PromptIndexer(self.text_embedder, listener=indexer_listener, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
     
     async def index(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
+    
+    def update_index_listenr(self, index_listener: ProcessorListener) -> bool:
+        self.indexer.listener = index_listener
+        return self.indexer.listener == index_listener
     
     def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
         existing_labels = self._get_all_cluster_labels()

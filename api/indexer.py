@@ -33,13 +33,3 @@ class BaseWebSocketListener(ProcessorListener[Input, Output]):
         await self.ws.send_json(CompleteMessage(total_processed=result.total_processed, time_elapsed=result.time_elapsed).model_dump())
 
 
-
-class PromptIndexerWebSocketListener(ProcessorListener[str, ItemEmbedding]):
-    def __init__(self, cluster_embedding_store: EmbeddingStore, kwargs):
-        super().__init__(**kwargs)
-        self.cluster_embedding_store = cluster_embedding_store
-
-    async def on_batch_complete(self, batch):
-        if len(batch) <= 0:
-            return
-        self.cluster_embedding_store.add(batch)
