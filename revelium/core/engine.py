@@ -154,12 +154,12 @@ class Revelium():
     def get_all_prompt_embeddings(self) -> tuple[list[ItemId], list[ndarray]]:
         ids: list[ItemId] = []
         embeddings: list[ndarray] = []
-        for id_, emb in self.iter_prompt_embeddings():
+        for id_, emb in self.stream_prompt_embeddings():
             ids.append(id_)
             embeddings.append(emb)
         return ids, embeddings
     
-    def iter_prompt_embeddings(self) -> Iterable[tuple[ItemId, ndarray]]:
+    def stream_prompt_embeddings(self) -> Iterable[tuple[ItemId, ndarray]]:
         count = self.prompt_embedding_store.count()
         for batch in paginated_read(
             lambda offset, limit: self.prompt_embedding_store.get(
@@ -173,9 +173,9 @@ class Revelium():
             yield from zip(batch.ids, batch.embeddings)
 
     def get_prompts_by_ids(self, ids: list[str]) -> list[Prompt]:
-        return list(self.iter_prompts_by_ids(ids))
+        return list(self.stream_prompts_by_ids(ids))
     
-    def iter_prompts_by_ids(self, ids: list[str]) -> Iterable[Prompt]:
+    def stream_prompts_by_ids(self, ids: list[str]) -> Iterable[Prompt]:
         for batch in paginated_read(
             lambda offset, limit: self.prompt_embedding_store.get(
                 ids = ids,
@@ -189,10 +189,10 @@ class Revelium():
             yield from [ Prompt(prompt_id=prompt_id, content=prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(batch.ids, batch.metadatas, batch.datas)]
 
     def get_prompts_metadata(self, ids: list[str]) -> list[PromptMetadata]:
-        return list(self.iter_prompts_metadata(ids))
+        return list(self.stream_prompts_metadata(ids))
     
 
-    def iter_prompts_metadata(self, ids: list[str]) -> Iterable[PromptMetadata]:
+    def stream_prompts_metadata(self, ids: list[str]) -> Iterable[PromptMetadata]:
         for batch in paginated_read(
             lambda offset, limit: self.prompt_embedding_store.get(
                 ids = ids,
