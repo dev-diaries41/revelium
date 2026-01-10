@@ -22,7 +22,7 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 @with_time
 def cluster(revelium: Revelium) -> tuple[ClusterResult, float]:
-    return revelium.cluster()
+    return revelium.cluster_prompts()
 
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123

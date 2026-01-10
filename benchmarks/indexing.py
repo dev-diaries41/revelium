@@ -10,6 +10,7 @@ from dataclasses import asdict
 from revelium.prompts.types import Prompt
 from revelium.data import get_dummy_data, get_placeholder_prompts
 from revelium.core.engine import Revelium, ReveliumConfig
+from revelium.prompts.indexer_listener import ProgressBarIndexerListener
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 
 
@@ -22,7 +23,7 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 # this is only for benchmarking
 async def run(revelium_client: Revelium, labelled_prompts: list[Prompt]):
     revelium_client.text_embedder.init()
-    result =  await revelium_client.index(labelled_prompts)
+    result =  await revelium_client.index_prompts(labelled_prompts)
     result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
     print(f"{revelium_client.config.text_embedder}_result - time_elpased: {result.time_elapsed} | processed: {result.total_processed}")
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
@@ -31,6 +32,7 @@ async def run(revelium_client: Revelium, labelled_prompts: list[Prompt]):
 
 async def main(labelled_prompts: list[Prompt]):
     revelium = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH, prompt_store_path=BENCHMARK_PROMPT_STORE_PATH))
+    revelium.update_index_listener(ProgressBarIndexerListener())
     # openai_revelium_client = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH, text_embedder="text-embedding-3-small", provider_api_key=OPENAI_API_KEY))
     await run(revelium, labelled_prompts)
 
