@@ -1,17 +1,13 @@
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pydantic import BaseModel, Field
 
-@dataclass
-class PromptMetadata:
-    UNCLUSTERED ="Unclustered"
+class PromptMetadata(BaseModel):
+    UNCLUSTERED: str = "Unclustered"
     cluster_id: str = UNCLUSTERED
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-
-@dataclass
-class Prompt:
+class Prompt(BaseModel):
     prompt_id: str
     content: str
-    metadata: PromptMetadata = field(default_factory=PromptMetadata)
-   
+    metadata: PromptMetadata = Field(default_factory=PromptMetadata)

@@ -105,7 +105,7 @@ class Revelium():
             updated_prompts.append(
                 ItemEmbeddingUpdate(
                     prompt_id,
-                    metadata=asdict(PromptMetadata(cluster_id=new_cluster, created_at=metadata.created_at, updated_at=updated_at))
+                    metadata=PromptMetadata(cluster_id=new_cluster, created_at=metadata.created_at, updated_at=updated_at).model_dump()
                 )
             )
         # print(f"length of updated: {len(updated_prompts)}")
@@ -186,7 +186,7 @@ class Revelium():
             total=len(ids),
             limit=500,
             ):
-            yield from [ Prompt(prompt_id, prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(batch.ids, batch.metadatas, batch.datas)]
+            yield from [ Prompt(prompt_id=prompt_id, content=prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(batch.ids, batch.metadatas, batch.datas)]
 
     def get_prompts_metadata(self, ids: list[str]) -> list[PromptMetadata]:
         return list(self.iter_prompts_metadata(ids))

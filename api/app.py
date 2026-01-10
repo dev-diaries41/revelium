@@ -80,7 +80,7 @@ async def get_prompts(req: GetPromptsRequest):
         prompts = await run_in_threadpool(revelium.get_prompts_by_ids, req.prompt_ids)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
-    return JSONResponse({"prompts": [asdict(p) for p in prompts]})
+    return JSONResponse({"prompts": [p.model_dump() for p in prompts]})
 
 
 @app.get("/api/prompts/count")
