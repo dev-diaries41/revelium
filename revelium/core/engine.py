@@ -5,13 +5,12 @@ from numpy import ndarray
 from datetime import datetime
 from typing import List, Dict, Optional, Iterable
 
-from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult
-from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult
+from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult, ItemEmbeddingUpdate
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
 from smartscan.processor import ProcessorListener
-from smartscan.embeds.types import ItemEmbeddingUpdate
+
 from revelium.constants import MINILM_MODEL_PATH, DB_DIR, MINILM_MAX_TOKENS
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.types import Prompt, PromptMetadata
