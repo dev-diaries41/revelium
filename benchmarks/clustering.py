@@ -9,9 +9,8 @@ load_dotenv()
 
 from dataclasses import asdict
 from smartscan import  ItemId, ClusterResult
-from smartscan.classify import IncrementalClusterer
-from revelium.utils.decorators import with_time
-from revelium.api.local import Revelium, ReveliumConfig
+from revelium.utils import with_time
+from revelium.core.engine import Revelium, ReveliumConfig
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -22,8 +21,8 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
 
 @with_time
-def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterResult, float]:
-    return clusterer.cluster(ids, embeddings)
+def cluster(revelium: Revelium) -> tuple[ClusterResult, float]:
+    return revelium.cluster()
 
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
@@ -38,19 +37,7 @@ async def run(revelium: Revelium):
     random.seed(32)
 
     # Ensure collection name is unique per model/dim
-    count = revelium.prompt_embedding_store.count()
-    ids, embeddings = [], []
-
-    limit = 500
-    offset = 0
-
-    while len(ids) < count:
-        query_result = revelium.prompt_embedding_store.get(include=['embeddings'], offset=offset, limit=limit)
-        ids.extend(query_result.ids)
-        embeddings.extend(query_result.embeddings)
-        offset += limit
-
-    result, time = cluster(revelium.clusterer, ids, embeddings)
+    result, time = cluster(revelium)
     # for c in result.clusters.values():
     #     print(c.metadata)
     
@@ -58,7 +45,7 @@ async def run(revelium: Revelium):
     revelium.update_clusters(result.clusters, result.merges)
 
     true_labels: dict[ItemId, str] = {}
-    for prompt_id in ids:
+    for prompt_id in result.assignments.keys():
         label = prompt_id.split("_")[0]
         if not label: 
             print(f"[WARNING] {prompt_id} is not a valid labelled item.")
