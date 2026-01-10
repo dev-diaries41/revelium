@@ -12,7 +12,7 @@ from smartscan import  ItemId, ClusterResult
 from revelium.utils import with_time
 from revelium.core.engine import Revelium, ReveliumConfig
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
-
+from revelium.plot import plot_clusters
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "clustering_benchmarks.jsonl")
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, "assignments_clustering_benchmarks.jsonl")
@@ -41,8 +41,13 @@ async def run(revelium: Revelium):
     # for c in result.clusters.values():
     #     print(c.metadata)
     
+    ## Assign clusters and update
     await revelium.update_prompts(result.assignments, result.merges)
     revelium.update_clusters(result.clusters, result.merges)
+
+    # Plot to visualise prompt clusters
+    ids, embeddings = revelium.get_all_prompt_embeddings()
+    plot_clusters(ids, embeddings, result)
 
     true_labels: dict[ItemId, str] = {}
     for prompt_id in result.assignments.keys():
