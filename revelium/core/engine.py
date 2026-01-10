@@ -3,10 +3,10 @@ import chromadb
 
 from numpy import ndarray
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 from dataclasses import asdict
 
-from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider
+from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
@@ -75,14 +75,16 @@ class Revelium():
         existing_labels = self._get_all_cluster_labels()
         prompts = self.prompt_embedding_store.get(filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
         sample_prompts = [content for content in prompts.datas]
-        input_prompt = self._get_prompt(cluster_id, existing_labels, sample_prompts)
+        input_prompt = self._get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
 
-    def cluster_prompts(self):
+    def cluster_prompts(self) -> ClusterResult:
         ids, embeddings = self._get_all_prompt_embeddings()
+        existing_clusters = self._get_existing_clusters()
+        self.clusterer.clusters = existing_clusters # temp workaround, updated a clearner way
         return self.clusterer.cluster(ids, embeddings)
                
-    async def update_prompts(self, assignments: Assignments, merges: ClusterMerges):
+    async def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
         prompt_ids = [str(k) for k in assignments.keys()]
         metadatas = self._get_prompts_metadata(prompt_ids)
         updated_at = datetime.now().isoformat()
@@ -111,7 +113,7 @@ class Revelium():
         self.prompt_embedding_store.update(updated_prompts)
 
 
-    def update_clusters(self, clusters: Dict[str, BaseCluster], merges: ClusterMerges):
+    def update_clusters(self, clusters: Dict[str, BaseCluster], merges: ClusterMerges) -> None:
         """
         Update the embedding store with clusters, applying merges if provided.
         Old clusters that have been merged are removed from the store.
@@ -124,7 +126,7 @@ class Revelium():
                 effective_clusters.pop(mid, None)
 
         cluster_embeddings = [
-            ItemEmbedding[Any, ClusterMetadata](
+            ItemEmbedding[None, ClusterMetadata](
                 c.prototype_id,
                 c.embedding,
                 metadata={**asdict(c.metadata), "label": c.label or self.UNLABELLED} 
@@ -143,17 +145,17 @@ class Revelium():
             return None
         return ClusterMetadata(**result.metadatas[0])
 
-    def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments):
+    def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments) -> ClusterAccuracy:
         return calculate_cluster_accuracy(true_labels, predicted_clusters)
     
-    def calculate_prompt_cost(self, prompt: Prompt, price_per_1m_tokens: float, model: str | TextEmbeddingModel):
+    def calculate_prompt_cost(self, prompt: Prompt, price_per_1m_tokens: float, model: str | TextEmbeddingModel) -> float:
         return embedding_token_cost(prompt.content, price_per_1m_tokens, model)
 
     # helps ensure each collection get embeddings of the right size
-    def _get_embedding_collection_name(self, type: str, model: TextEmbeddingModel, embed_dim: int):
+    def _get_embedding_collection_name(self, type: str, model: TextEmbeddingModel, embed_dim: int) -> str:
         return f"{type}_{model}_{embed_dim}_collection"
     
-    def _get_text_embedder(self, model: TextEmbeddingModel, provider_api_key: Optional[str] = None):
+    def _get_text_embedder(self, model: TextEmbeddingModel, provider_api_key: Optional[str] = None) -> TextEmbeddingProvider:
         if model == ("text-embedding-3-large" or "text-embedding-3-small"):
             if provider_api_key is None:
                 raise ValueError("Missing OpenAI API key")
@@ -161,10 +163,10 @@ class Revelium():
         else:
             return MiniLmTextEmbedder(MINILM_MODEL_PATH, MINILM_MAX_TOKENS)
 
-    def _get_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]):
+    def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
     
-    def _get_all_prompt_embeddings(self):
+    def _get_all_prompt_embeddings(self) -> tuple[list[ItemId], list[ndarray]]:
         count = self.prompt_embedding_store.count()
         ids: list[str] = []
         embeddings: list[ndarray] = []
@@ -182,7 +184,7 @@ class Revelium():
         return ids, embeddings
     
 
-    def _get_prompts_metadata(self, ids: list[str]):
+    def _get_prompts_metadata(self, ids: list[str]) -> list[PromptMetadata]:
         metadatas: list[PromptMetadata] = []
         for batch in paginated_read(
             lambda offset, limit: self.prompt_embedding_store.get(
@@ -197,15 +199,33 @@ class Revelium():
             metadatas.extend([ PromptMetadata(**m) for m in batch.metadatas])
         return metadatas
     
-    def _get_all_cluster_labels(self):
+    def _get_all_cluster_labels(self) -> list[str]:
         labels: list[str] = []
         for batch in paginated_read_until_empty(
-            lambda offset, limit: self.cluster_embedding_store.get(
+            fetch_fn=lambda offset, limit: self.cluster_embedding_store.get(
                 include=['metadatas'], filter={"label": {"$ne": self.UNLABELLED}},
                 limit=limit,
                 offset=offset
                 ),
+            break_fn=lambda batch: len(batch.metadatas) == 0,
             limit=500,
             ):
             labels.extend([m.get("label") for m in batch.metadatas])
         return labels
+    
+    def _get_existing_clusters(self) -> dict[ClusterId, BaseCluster]:
+        clusters: Dict[ClusterId, BaseCluster] = {}
+        for batch in paginated_read_until_empty(
+            fetch_fn=lambda offset, limit: self.cluster_embedding_store.get(
+                include=['metadatas', 'embeddings'],
+                limit=limit,
+                offset=offset
+                ),
+            break_fn=lambda batch: len(batch.metadatas) == 0,
+            limit=500
+            ):
+            for cluster_id, embedding, metadata in zip(batch.ids, batch.embeddings, batch.metadatas):
+                copy_meta = {k:v for k,v in dict(metadata).items() if k != "label"}
+                print(copy_meta)
+                clusters[cluster_id] = BaseCluster(cluster_id, embedding, ClusterMetadata(**copy_meta), label=metadata.get("label"))
+        return clusters

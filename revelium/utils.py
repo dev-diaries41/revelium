@@ -3,6 +3,8 @@ import tracemalloc
 import time
 import os 
 
+from dataclasses import asdict
+
 T = TypeVar("T")
 
 def paginated_read(fetch_fn: Callable[[int, int], T], total: int, limit: int = 500,) -> Iterator[T]:
@@ -13,27 +15,12 @@ def paginated_read(fetch_fn: Callable[[int, int], T], total: int, limit: int = 5
 
 
 
-def paginated_read_until_empty(fetch_fn: Callable[[int, int], T], limit: int = 500,) -> Iterator[T]:
-    def is_empty_batch(batch: T) -> bool:
-        if batch is None:
-            return True
-        if isinstance(batch, dict):
-            return not any(batch.values())
-        if hasattr(batch, '__dict__'):
-            return not any(
-                getattr(batch, k) is not None and getattr(batch, k) != []
-                for k in batch.__dict__
-            )
-        return False 
-
+def paginated_read_until_empty(fetch_fn: Callable[[int, int], T], break_fn: Callable[[T], bool], limit: int = 500,) -> Iterator[T]:
     offset = 0
     while True:
         batch = fetch_fn(offset, limit)
-        if is_empty_batch(batch):
+        if break_fn(batch):
             break
-        if isinstance(batch, dict):
-            if not any(batch.values()):
-                break
         yield batch
         offset += limit
 
