@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
-from revelium.api.local import Revelium, ReveliumConfig
+from revelium.core.engine import Revelium, ReveliumConfig
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "labelling_benchmarks.jsonl")

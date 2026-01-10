@@ -1,6 +1,7 @@
 import os
 import chromadb
 
+from numpy import ndarray
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import asdict
@@ -26,16 +27,15 @@ from revelium.providers.embeddings.openai import OpenAITextEmbedder
 from revelium.schemas.llm import LLMClientConfig
 from revelium.providers.llm.llm_client import LLMClient
 from revelium.schemas.revelium_config import ReveliumConfig
-from revelium.utils.decorators import with_time
+from revelium.utils import  paginated_read, paginated_read_until_empty
 
 
 class Revelium():
-    UNLABELLED = "unlabelled"  # class-level constant
+    UNLABELLED = "unlabelled"
     CLUSTER_TYPE = "cluster"
     PROMPT_TYPE = "prompt"
 
     def __init__(self, 
-                
         config: Optional[ReveliumConfig] = None,                 
         text_embedder: Optional[TextEmbeddingProvider] = None,
         llm_client: Optional[LLMClient] = None,
@@ -72,14 +72,14 @@ class Revelium():
         return await self.indexer.run(prompts)
     
     async def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
-        existing_labels = self._get_existing_labels()
+        existing_labels = self._get_all_cluster_labels()
         prompts = await self.prompt_store.get(cluster_id=cluster_id, limit=sample_size)
         sample_prompts = [p.content for p in prompts]
         input_prompt = self._get_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
         
     def cluster(self):
-        ids, embeddings = self._paginate_prompt_embed_store()
+        ids, embeddings = self._get_all_prompt_embeddings()
         return self.clusterer.cluster(ids, embeddings)
                
     async def update_prompts(self, assignments: Assignments, merges: ClusterMerges):
@@ -159,22 +159,35 @@ class Revelium():
         else:
             return MiniLmTextEmbedder(MINILM_MODEL_PATH, MINILM_MAX_TOKENS)
 
-    def _get_existing_labels(self) -> list[str]:
-        q = self.cluster_embedding_store.get(include=['metadatas'], filter={"$ne": self.UNLABELLED})
-        return [m.get("label") for m in q.metadatas]
-
     def _get_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]):
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
     
-    def _paginate_prompt_embed_store(self):
-        ids, embeddings = [], []
-        limit = 500
-        offset = 0
+    def _get_all_prompt_embeddings(self):
         count = self.prompt_embedding_store.count()
-
-        while len(ids) < count:
-            query_result = self.prompt_embedding_store.get(include=['embeddings'], offset=offset, limit=limit)
-            ids.extend(query_result.ids)
-            embeddings.extend(query_result.embeddings)
-            offset += limit
+        ids: list[str] = []
+        embeddings: list[ndarray] = []
+        for batch in paginated_read(
+            lambda offset, limit: self.prompt_embedding_store.get(
+                include=["embeddings"],
+                offset=offset,
+                limit=limit,
+            ),
+            total=count,
+            limit=500,
+            ):
+            ids.extend(batch.ids)
+            embeddings.extend(batch.embeddings)
         return ids, embeddings
+    
+    def _get_all_cluster_labels(self):
+        labels: list[str] = []
+        for batch in paginated_read_until_empty(
+            lambda offset, limit: self.cluster_embedding_store.get(
+                include=['metadatas'], filter={"$ne": self.UNLABELLED},
+                limit=limit,
+                offset=offset
+                ),
+            limit=500,
+            ):
+            labels.extend([m.get("label") for m in batch.metadatas])
+        return labels

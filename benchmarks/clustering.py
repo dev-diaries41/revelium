@@ -9,7 +9,7 @@ load_dotenv()
 
 from dataclasses import asdict
 from smartscan import  ItemId, ClusterResult
-from revelium.utils.decorators import with_time
+from revelium.utils import with_time
 from revelium.core.engine import Revelium, ReveliumConfig
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 
