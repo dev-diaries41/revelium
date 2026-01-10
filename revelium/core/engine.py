@@ -4,9 +4,8 @@ import chromadb
 from numpy import ndarray
 from datetime import datetime
 from typing import List, Dict, Optional, Iterable
-from dataclasses import asdict
 
-from smartscan import ItemEmbedding, BaseCluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult
+from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
@@ -113,12 +112,12 @@ class Revelium():
         self.prompt_embedding_store.update(updated_prompts)
 
 
-    def update_clusters(self, clusters: Dict[str, BaseCluster], merges: ClusterMerges) -> None:
+    def update_clusters(self, clusters: Dict[str, Cluster], merges: ClusterMerges) -> None:
         """
         Update the embedding store with clusters, applying merges if provided.
         Old clusters that have been merged are removed from the store.
         """
-        effective_clusters: Dict[str, BaseCluster] = clusters.copy()
+        effective_clusters: Dict[str, Cluster] = clusters.copy()
 
         if merges:
             merged_ids = {cid for targets in merges.values() for cid in targets}
@@ -129,7 +128,7 @@ class Revelium():
             ItemEmbedding[None, ClusterMetadata](
                 c.prototype_id,
                 c.embedding,
-                metadata={**asdict(c.metadata), "label": c.label or self.UNLABELLED} 
+                metadata={**c.metadata.model_dump()} 
             )
             for c in effective_clusters.values()
         ]
@@ -219,8 +218,8 @@ class Revelium():
             labels.extend([m.get("label") for m in batch.metadatas])
         return labels
     
-    def get_existing_clusters(self) -> dict[ClusterId, BaseCluster]:
-        clusters: Dict[ClusterId, BaseCluster] = {}
+    def get_existing_clusters(self) -> dict[ClusterId, Cluster]:
+        clusters: Dict[ClusterId, Cluster] = {}
         for batch in paginated_read_until_empty(
             fetch_fn=lambda offset, limit: self.cluster_embedding_store.get(
                 include=['metadatas', 'embeddings'],
@@ -233,7 +232,7 @@ class Revelium():
             for cluster_id, embedding, metadata in zip(batch.ids, batch.embeddings, batch.metadatas):
                 copy_meta = {k:v for k,v in dict(metadata).items() if k != "label"}
                 print(copy_meta)
-                clusters[cluster_id] = BaseCluster(cluster_id, embedding, ClusterMetadata(**copy_meta), label=metadata.get("label"))
+                clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**copy_meta), label=metadata.get("label"))
         return clusters
     
     # helps ensure each collection get embeddings of the right size

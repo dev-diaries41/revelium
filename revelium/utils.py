@@ -3,8 +3,6 @@ import tracemalloc
 import time
 import os 
 
-from dataclasses import asdict
-
 T = TypeVar("T")
 
 def paginated_read(fetch_fn: Callable[[int, int], T], total: int, limit: int = 500,) -> Iterator[T]:
