@@ -231,7 +231,7 @@ class Revelium():
             limit=500
             ):
             for cluster_id, embedding, metadata in zip(batch.ids, batch.embeddings, batch.metadatas):
-                clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
+                clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata.model_dump()), label=metadata.get("label"))
         return clusters
     
     # helps ensure each collection get embeddings of the right size
