@@ -47,7 +47,7 @@ async def run(revelium: Revelium):
 
     # Plot to visualise prompt clusters
     ids, embeddings = revelium.get_all_prompt_embeddings()
-    plot_clusters(ids, embeddings, result)
+    plot_clusters(ids, embeddings, result.assignments)
 
     true_labels: dict[ItemId, str] = {}
     for prompt_id in result.assignments.keys():
