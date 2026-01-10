@@ -28,4 +28,6 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
         return ItemEmbedding(item.prompt_id, text_prototype, data=item.content, metadata=asdict(item.metadata))
              
     async def on_batch_complete(self, batch):
+        if len(batch) == 0:
+            return
         self.embeddings_store.add(batch)
