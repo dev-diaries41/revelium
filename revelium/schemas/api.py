@@ -51,6 +51,9 @@ class JobReceipt(BaseModel):
 class PromptsPayload(BaseModel):
     prompts: List[Prompt]
 
+class ClusterIdParam(BaseModel):
+    cluster_id: str
+
 class AddPromptsRequest(PromptsPayload):
     pass
 
