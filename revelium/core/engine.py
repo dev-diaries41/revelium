@@ -17,6 +17,7 @@ from revelium.prompts.types import Prompt, PromptMetadata
 from revelium.tokens import embedding_token_cost
 from revelium.schemas.llm import LLMClassificationResult
 from revelium.prompts.indexer import PromptIndexer
+from revelium.prompts.types import PromptsOverviewInfo
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
@@ -203,6 +204,12 @@ class Revelium():
             ):
             yield from [ PromptMetadata(**m) for m in batch.metadatas]   
 
+    def get_prompts_overview(self) -> PromptsOverviewInfo:
+        prompt_count = self.prompt_embedding_store.count()
+        cluster_count = self.cluster_embedding_store.count()
+        average_prompt_cost = 0 #TODO calculate avg prompt cost
+        return PromptsOverviewInfo(total_prompts=prompt_count, total_clusters=cluster_count, average_prompt_cost=average_prompt_cost)
+
     def get_existing_labels(self) -> list[str]:
         labels: list[str] = []
         for batch in paginated_read_until_empty(
@@ -216,6 +223,7 @@ class Revelium():
             ):
             labels.extend([m.get("label") for m in batch.metadatas])
         return labels
+    
     
     def get_existing_clusters(self) -> dict[ClusterId, Cluster]:
         clusters: Dict[ClusterId, Cluster] = {}

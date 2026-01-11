@@ -1,6 +1,8 @@
-from typing import List
+from typing import List, Optional
 import httpx
-from revelium.prompts.types import Prompt
+
+from revelium.prompts.types import Prompt, PromptsOverviewInfo
+from smartscan import ClusterMetadata
 
 class ReveliumClient:
     def __init__(self, base_url: str):
@@ -19,7 +21,7 @@ class ReveliumClient:
                 raise Exception(f"Error adding prompts: {res.text}")
             return res.json()
         
-    async def get_prompts(self, ids: List[str]) -> dict:
+    async def get_prompts(self, ids: List[str]) -> List[Prompt]:
         url = f"{self.base_url}/api/prompts/"
         payload = {"prompt_ids": ids}
 
@@ -27,9 +29,18 @@ class ReveliumClient:
             res = await client.post(url, json=payload)
             if res.status_code != 200:
                 raise Exception(f"Error adding prompts: {res.text}")
+            return res.json().get('prompts', [])
+        
+    async def get_prompts_overview(self) -> PromptsOverviewInfo:
+        url = f"{self.base_url}/api/prompts/overview"
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url)
+            if res.status_code != 200:
+                raise Exception(f"Error getting ovrerview: {res.text}")
             return res.json()
 
-    async def get_cluster_metadata(self, cluster_id: str) -> dict:
+
+    async def get_cluster_metadata(self, cluster_id: str) -> Optional[ClusterMetadata]:
         url = f"{self.base_url}/api/clusters/metadata"
         payload = {"cluster_id": cluster_id}
 
@@ -37,7 +48,7 @@ class ReveliumClient:
             res = await client.get(url, params=payload)
             if res.status_code != 200:
                 raise Exception(f"Error getting metadata: {res.text}")
-            return res.json()
+            return res.json().get("metadata")
 
    
     async def count_prompts(self) -> int:

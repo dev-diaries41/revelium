@@ -3,7 +3,7 @@ from typing import List, Optional, Literal
 
 from smartscan import ClusterMetadata
 
-from revelium.prompts.types import Prompt
+from revelium.prompts.types import Prompt, PromptsOverviewInfo
 
 # Websocksets / SSE
 class ActiveMessage(BaseModel):
@@ -57,7 +57,6 @@ class AddPromptsRequest(PromptsPayload):
 class AddPromptsResponse(JobReceipt):
     pass
  
-
 class GetPromptsRequest(BaseModel):
     prompt_ids: List[str]
 
@@ -72,6 +71,9 @@ class GetLabelsResponse(BaseModel):
 
 class GetClusterMetadataResponse(BaseModel):
     metadata: Optional[ClusterMetadata]
+
+class GetPromptsOverviewResponse(PromptsOverviewInfo):
+    pass
     
 
     

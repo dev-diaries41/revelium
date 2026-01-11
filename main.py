@@ -24,5 +24,7 @@ async def main():
 
     print("Labels:", await client.get_existing_labels())
 
+    print("Overview:", await client.get_prompts_overview())
+
 
 asyncio.run(main())
