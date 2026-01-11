@@ -7,7 +7,9 @@ from revelium.constants import MODEL_REGISTRY
 
 
 class ModelManager:
-    def __init__(self, root_dir: str):
+    DEFAULT_MODEL_DIR = Path.home() / ".cache" / "revelium" / "models"
+
+    def __init__(self, root_dir: str = DEFAULT_MODEL_DIR):
         self.root_dir = Path(root_dir).expanduser().resolve()
         self.root_dir.mkdir(parents=True, exist_ok=True)
 

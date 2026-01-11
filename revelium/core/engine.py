@@ -12,7 +12,7 @@ from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
 from smartscan.processor import ProcessorListener
 
-from revelium.constants import MINILM_MODEL_PATH, DB_DIR, MINILM_MAX_TOKENS
+from revelium.constants import DB_DIR, MINILM_MAX_TOKENS
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.types import Prompt, PromptMetadata
 from revelium.tokens import embedding_token_cost
@@ -33,7 +33,6 @@ from revelium.models.manage import ModelManager
 class Revelium():
     CLUSTER_TYPE = "cluster"
     PROMPT_TYPE = "prompt"
-    DEFAULT_MODEL_DIR = Path.home() / ".cache" / "revelium" / "models"
 
     def __init__(self, 
         config: Optional[ReveliumConfig] = None,                 
@@ -46,7 +45,7 @@ class Revelium():
                  ):
         os.makedirs(DB_DIR, exist_ok=True)
         self.config = config or ReveliumConfig()
-        self.model_manager = ModelManager(Revelium.DEFAULT_MODEL_DIR) # must me initialised before textembedder
+        self.model_manager = ModelManager() # must me initialised before textembedder
         self.text_embedder = text_embedder or self._get_text_embedder(self.config.text_embedder, self.config.provider_api_key)
         self.llm = llm_client or  OpenAIClient(self.config.provider_api_key, LLMClientConfig(model_name=self.config.provider_model, system_prompt=self.config.system_prompt))
         self.clusterer = clusterer or IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking)  
