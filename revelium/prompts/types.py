@@ -11,3 +11,8 @@ class Prompt(BaseModel):
     prompt_id: str
     content: str
     metadata: PromptMetadata = Field(default_factory=PromptMetadata)
+
+class PromptsOverviewInfo(BaseModel):
+    total_prompts: int
+    total_clusters: int
+    average_prompt_cost: int

@@ -8,7 +8,7 @@ from fastapi.concurrency import run_in_threadpool
 from dataclasses import asdict
 from smartscan.processor.metrics import MetricsSuccess
 from revelium.core.engine import Revelium, ReveliumConfig
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, AddPromptsResponse, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, AddPromptsResponse, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse, GetPromptsOverviewResponse
 
 from dotenv import load_dotenv
 
@@ -82,13 +82,22 @@ async def count_prompts():
     return JSONResponse(GetCountResponse(count=count).model_dump())
 
 
+@app.get("/api/prompts/overview")
+async def get_prompts_overview():
+    try:
+        overview = await run_in_threadpool( revelium.get_prompts_overview)
+    except Exception as _:
+            raise HTTPException(status_code=500, detail="Error getting prompt overview")
+    return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
+
+
 @app.get("/api/clusters/metadata")
 async def get_cluster_metadata(cluster_id: str):
     try:
         metadata = await run_in_threadpool(revelium.get_cluster_metadata, cluster_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
-    return JSONResponse(GetClusterMetadataResponse(metadata=metadata))
+    return JSONResponse(GetClusterMetadataResponse(metadata=metadata).model_dump())
 
 
 @app.get("/api/clusters/count")
