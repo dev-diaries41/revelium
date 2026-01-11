@@ -2,7 +2,7 @@ from revelium.models.manage import ModelManager
 from pathlib import Path
 
 def test_model_manager():
-    model_manager = ModelManager("./")
+    model_manager = ModelManager()
     exists = model_manager.model_exists('all-minilm-l6-v2')
     model_manager.delete_model('all-minilm-l6-v2')
     exists = model_manager.model_exists('all-minilm-l6-v2')
