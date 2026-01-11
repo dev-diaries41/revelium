@@ -2,11 +2,7 @@ from fastapi import WebSocket
 
 from smartscan.processor import ProcessorListener
 from smartscan.processor.types import Input, Output
-from smartscan.types import ItemEmbedding
-from smartscan.embeds import EmbeddingStore
-
 from revelium.schemas.api import FailMessage, ErrorMessage, ProgressMessage, CompleteMessage, ActiveMessage
-
 
 
 class BaseWebSocketListener(ProcessorListener[Input, Output]):
