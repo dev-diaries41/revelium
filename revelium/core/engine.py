@@ -1,7 +1,6 @@
 import os
 import chromadb
 
-from pathlib import Path
 from numpy import ndarray
 from datetime import datetime
 from typing import List, Dict, Optional, Iterable
@@ -20,10 +19,8 @@ from revelium.schemas.llm import LLMClassificationResult
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.types import PromptsOverviewInfo
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
-from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
-from revelium.schemas.llm import LLMClientConfig
 from revelium.providers.llm.llm_client import LLMClient
 from revelium.schemas.revelium_config import ReveliumConfig
 from revelium.utils import  paginated_read, paginated_read_until_empty
@@ -47,7 +44,7 @@ class Revelium():
         self.config = config or ReveliumConfig()
         self.model_manager = ModelManager() # must me initialised before textembedder
         self.text_embedder = text_embedder or self._get_text_embedder(self.config.text_embedder, self.config.provider_api_key)
-        self.llm = llm_client or  OpenAIClient(self.config.provider_api_key, LLMClientConfig(model_name=self.config.provider_model, system_prompt=self.config.system_prompt))
+        self.llm = llm_client
         self.clusterer = clusterer or IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking)  
         
         if not cluster_embedding_store or prompt_embedding_store:
@@ -74,6 +71,8 @@ class Revelium():
         return self.indexer.listener == index_listener
     
     def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+        if not self._has_llm_client():
+            raise ValueError("No LLM client exists")
         existing_labels = self.get_existing_labels()
         prompts = self.prompt_embedding_store.get(filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
         sample_prompts = [content for content in prompts.datas]
@@ -263,4 +262,7 @@ class Revelium():
 
     def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
+    
+    def _has_llm_client(self) -> bool:
+        return self.llm != None
     
