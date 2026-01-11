@@ -1,4 +1,3 @@
-import os
 import chromadb
 
 from numpy import ndarray
@@ -11,20 +10,18 @@ from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
 from smartscan.processor import ProcessorListener
 
-from revelium.constants import DB_DIR, MINILM_MAX_TOKENS
-from revelium.prompts.indexer import PromptIndexer
-from revelium.prompts.types import Prompt, PromptMetadata
-from revelium.tokens import embedding_token_cost
+from revelium.schemas.revelium_config import ReveliumConfig
+from revelium.prompts.types import Prompt, PromptMetadata, PromptsOverviewInfo
+from revelium.providers.types import TextEmbeddingModel
 from revelium.schemas.llm import LLMClassificationResult
 from revelium.prompts.indexer import PromptIndexer
-from revelium.prompts.types import PromptsOverviewInfo
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
-from revelium.providers.types import TextEmbeddingModel
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
 from revelium.providers.llm.llm_client import LLMClient
-from revelium.schemas.revelium_config import ReveliumConfig
-from revelium.utils import  paginated_read, paginated_read_until_empty
 from revelium.models.manage import ModelManager
+from revelium.utils import  paginated_read, paginated_read_until_empty
+from revelium.tokens import embedding_token_cost
+from revelium.constants import MINILM_MAX_TOKENS
 
 
 class Revelium():
@@ -40,7 +37,6 @@ class Revelium():
         cluster_embedding_store: Optional[EmbeddingStore] = None,
         prompt_embedding_store: Optional[EmbeddingStore] = None,
                  ):
-        os.makedirs(DB_DIR, exist_ok=True)
         self.config = config or ReveliumConfig()
         self.model_manager = ModelManager() # must me initialised before textembedder
         self.text_embedder = text_embedder or self._get_text_embedder(self.config.text_embedder, self.config.provider_api_key)
