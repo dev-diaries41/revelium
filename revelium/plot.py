@@ -28,8 +28,7 @@ def plot_clusters(ids: List[str], embeddings: List[np.ndarray], assignments: Ass
         raise ValueError("method must be 'tsne' or 'pca'")
 
     # Get cluster IDs for each item
-    assignments = assignments
-    cluster_ids = [assignments.get(i) for i in ids]
+    cluster_ids = [assignments.get(i, "unassigned") for i in ids]
 
     # Assign a color to each cluster
     unique_clusters = list(set(cluster_ids))

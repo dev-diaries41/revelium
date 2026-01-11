@@ -9,13 +9,15 @@ load_dotenv()
 
 from dataclasses import asdict
 from smartscan import  ItemId, ClusterResult
-from revelium.utils import with_time
+from revelium.utils import with_time, get_new_filename
 from revelium.core.engine import Revelium, ReveliumConfig
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 from revelium.plot import plot_clusters
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "clustering_benchmarks.jsonl")
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, "assignments_clustering_benchmarks.jsonl")
+BENCHMARK_PLOTS_DIR = os.path.join(BENCHMARK_DIR, "plots")
+BENCHMARK_CLUSTERS_PLOT =  "prompt_clusters"
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
@@ -27,7 +29,7 @@ def cluster(revelium: Revelium) -> tuple[ClusterResult, float]:
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-async def run(revelium: Revelium):
+async def run(revelium: Revelium, plot_output: str):
     results = {}
     revelium.clusterer.clear()
     ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
@@ -47,7 +49,7 @@ async def run(revelium: Revelium):
 
     # Plot to visualise prompt clusters
     ids, embeddings = revelium.get_all_prompt_embeddings()
-    plot_clusters(ids, embeddings, result.assignments)
+    plot_clusters(ids, embeddings, result.assignments, output_path=plot_output)
 
     true_labels: dict[ItemId, str] = {}
     for prompt_id in result.assignments.keys():
@@ -72,6 +74,7 @@ async def run(revelium: Revelium):
 
 async def main():
     revelium = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH, prompt_store_path=BENCHMARK_PROMPT_STORE_PATH))
-    await run(revelium)
+    plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, BENCHMARK_CLUSTERS_PLOT, ".png")
+    await run(revelium, plot_output)
 
 asyncio.run(main())
