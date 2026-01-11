@@ -11,7 +11,7 @@ from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
 from smartscan.processor import ProcessorListener
 
-from revelium.constants import MINILM_MODEL_PATH, DB_DIR, MINILM_MAX_TOKENS
+from revelium.constants import DB_DIR, MINILM_MAX_TOKENS
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.types import Prompt, PromptMetadata
 from revelium.tokens import embedding_token_cost
@@ -19,13 +19,12 @@ from revelium.schemas.llm import LLMClassificationResult
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.types import PromptsOverviewInfo
 from revelium.embeddings.chroma_store import ChromaDBEmbeddingStore
-from revelium.providers.llm.openai import OpenAIClient
 from revelium.providers.types import TextEmbeddingModel
 from revelium.providers.embeddings.openai import OpenAITextEmbedder
-from revelium.schemas.llm import LLMClientConfig
 from revelium.providers.llm.llm_client import LLMClient
 from revelium.schemas.revelium_config import ReveliumConfig
 from revelium.utils import  paginated_read, paginated_read_until_empty
+from revelium.models.manage import ModelManager
 
 
 class Revelium():
@@ -43,8 +42,9 @@ class Revelium():
                  ):
         os.makedirs(DB_DIR, exist_ok=True)
         self.config = config or ReveliumConfig()
+        self.model_manager = ModelManager() # must me initialised before textembedder
         self.text_embedder = text_embedder or self._get_text_embedder(self.config.text_embedder, self.config.provider_api_key)
-        self.llm = llm_client or  OpenAIClient(self.config.provider_api_key, LLMClientConfig(model_name=self.config.provider_model, system_prompt=self.config.system_prompt))
+        self.llm = llm_client
         self.clusterer = clusterer or IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking)  
         
         if not cluster_embedding_store or prompt_embedding_store:
@@ -62,7 +62,7 @@ class Revelium():
             ) 
         
         self.indexer =  PromptIndexer(self.text_embedder, listener=indexer_listener, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
-    
+
     async def index_prompts(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
     
@@ -71,6 +71,8 @@ class Revelium():
         return self.indexer.listener == index_listener
     
     def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
+        if not self._has_llm_client():
+            raise ValueError("No LLM client exists")
         existing_labels = self.get_existing_labels()
         prompts = self.prompt_embedding_store.get(filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
         sample_prompts = [content for content in prompts.datas]
@@ -239,6 +241,7 @@ class Revelium():
             for cluster_id, embedding, metadata in zip(batch.ids, batch.embeddings, batch.metadatas):
                 clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
         return clusters
+        
     
     # helps ensure each collection get embeddings of the right size
     def _get_embedding_collection_name(self, type: str, model: TextEmbeddingModel, embed_dim: int) -> str:
@@ -250,8 +253,16 @@ class Revelium():
                 raise ValueError("Missing OpenAI API key")
             return OpenAITextEmbedder(provider_api_key, model=model)
         else:
-            return MiniLmTextEmbedder(MINILM_MODEL_PATH, MINILM_MAX_TOKENS)
+            if not self.model_manager.model_exists(model):
+                print(f"{model} doesn't exsiting. Downloading model now...")
+                path = self.model_manager.download_model(model)
+                return MiniLmTextEmbedder(path, MINILM_MAX_TOKENS)
+            path = self.model_manager.get_model_path(model)
+            return MiniLmTextEmbedder(path, MINILM_MAX_TOKENS)
 
     def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
+    
+    def _has_llm_client(self) -> bool:
+        return self.llm != None
     
