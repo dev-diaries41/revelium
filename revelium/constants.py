@@ -1,9 +1,9 @@
 import os
 from typing import Dict
 from revelium.providers.types import LocalTextEmbeddingModel, ModelInfo
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_DIR = os.path.join(BASE_DIR, "db")
+BASE_DIR = Path.home() / ".cache" / "revelium"
 
 # Local models
 MINILM_MAX_TOKENS = 512

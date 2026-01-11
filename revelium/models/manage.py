@@ -3,11 +3,11 @@ import tempfile
 import urllib.request
 from pathlib import Path
 from revelium.providers.types import LocalTextEmbeddingModel
-from revelium.constants import MODEL_REGISTRY
+from revelium.constants import BASE_DIR, MODEL_REGISTRY
 
 
 class ModelManager:
-    DEFAULT_MODEL_DIR = Path.home() / ".cache" / "revelium" / "models"
+    DEFAULT_MODEL_DIR = BASE_DIR / "models"
 
     def __init__(self, root_dir: str = DEFAULT_MODEL_DIR):
         self.root_dir = Path(root_dir).expanduser().resolve()
@@ -16,7 +16,6 @@ class ModelManager:
     def download_model(self, name: LocalTextEmbeddingModel, timeout: int = 30) -> Path:
         """
         Download a file from `url` into the manager's root_dir.
-        - If filename is provided, use it; otherwise derive from the URL.
         - Writes to a temp file and atomically moves into place.
         - Returns the Path to the downloaded file.
         """
