@@ -5,11 +5,10 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 
-from typing import List
 from dataclasses import asdict
-from pydantic import BaseModel, Field
+from smartscan.processor.metrics import MetricsSuccess
 from revelium.core.engine import Revelium, ReveliumConfig
-from revelium.prompts.types import Prompt
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, AddPromptsResponse, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse
 
 from dotenv import load_dotenv
 
@@ -48,28 +47,19 @@ app.add_middleware(
 #         print("Client disconnected")
 
 
-class AddPromptsRequest(BaseModel):
-    prompts: List[Prompt]
-
-
 @app.post("/api/prompts/add")
 async def add_prompts(req: AddPromptsRequest):
     try:
         if len(req.prompts) == 0:
             raise HTTPException(status_code=400, detail="Missing prompts")
-        # Note: This approach my be temp
+        # TODO: Add job to queue and return JobReceipt
         result = await revelium.index_prompts(req.prompts)
         if hasattr(result, "error" ):
-             raise result.error
-        result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
+            raise result.error
+        result_dict: MetricsSuccess = {k: v for k, v in asdict(result).items() if k != "error"}
     except Exception as e:
             raise HTTPException(status_code=500, detail="Error adding prompts")
     return JSONResponse(result_dict)
-
-
-
-class GetPromptsRequest(BaseModel):
-    prompt_ids: List[str]
 
 
 @app.post("/api/prompts/")
@@ -80,7 +70,7 @@ async def get_prompts(req: GetPromptsRequest):
         prompts = await run_in_threadpool(revelium.get_prompts_by_ids, req.prompt_ids)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
-    return JSONResponse({"prompts": [p.model_dump() for p in prompts]})
+    return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
 
 
 @app.get("/api/prompts/count")
@@ -89,7 +79,7 @@ async def count_prompts():
         count = await run_in_threadpool( revelium.prompt_embedding_store.count)
     except Exception as _:
             raise HTTPException(status_code=500, detail="Error counting items in collection")
-    return JSONResponse({"count": count})
+    return JSONResponse(GetCountResponse(count=count).model_dump())
 
 
 @app.get("/api/clusters/metadata")
@@ -98,7 +88,7 @@ async def get_cluster_metadata(cluster_id: str):
         metadata = await run_in_threadpool(revelium.get_cluster_metadata, cluster_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
-    return JSONResponse({"metadata": metadata})
+    return JSONResponse(GetClusterMetadataResponse(metadata=metadata))
 
 
 @app.get("/api/clusters/count")
@@ -107,7 +97,7 @@ async def count_clusters():
         count = await run_in_threadpool( revelium.cluster_embedding_store.count)
     except Exception as _:
             raise HTTPException(status_code=500, detail="Error counting items in collection")
-    return JSONResponse({"count": count})
+    return JSONResponse(GetCountResponse(count=count).model_dump())
 
 @app.get("/api/labels")
 async def get_existing_labels():
@@ -115,4 +105,4 @@ async def get_existing_labels():
         labels = await run_in_threadpool(revelium.get_existing_labels)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
-    return JSONResponse({"labels": labels})
+    return JSONResponse(GetLabelsResponse(labels=labels).model_dump())
