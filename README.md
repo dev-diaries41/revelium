@@ -4,7 +4,7 @@ Revelium is a business-focused LLM analytics platform that turns real user promp
 
 ## Design choices
 * Model: MiniLM-6 quant onnxruntime model
-* Max token length: MiniLM-l6 tokenizer used max length of 512 instead of 182
+* Max token length: MiniLM-l6 tokenizer used max length of 512 instead of 128
     - Pro: This improves cluster accuracy by avoiding loss of context when embedding large prompts
     - Con: This increases indexing time (batch embed generation and storage) by up to 4x
     - Bench marks: 50 prompts of character length ~ 500, using the 512 tokenizer length takes ~3s, on CPU with 16 cores
@@ -12,7 +12,7 @@ Revelium is a business-focused LLM analytics platform that turns real user promp
     
 ## Features
 
-1. **Cluster Prompts & Label by Use Case**
+1. **Cluster Prompts**
 
    * Automatically groups similar prompts and labels them to reveal the **most popular business use cases**.
 
