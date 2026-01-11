@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import List, Optional, Dict, TypeVar, Type
 from pydantic import BaseModel
-from revelium.schemas.model import Message
+from revelium.schemas.llm import Message
 import numpy as np
 
 JsonOutput = TypeVar("JsonOutput", bound=BaseModel)

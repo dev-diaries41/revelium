@@ -3,13 +3,11 @@ from smartscan.media import chunk_text
 from smartscan.embeds import generate_prototype_embedding, EmbeddingStore
 from smartscan.processor import BatchProcessor
 from smartscan.providers import TextEmbeddingProvider
-from revelium.prompts.store import PromptStore
 from revelium.prompts.types import Prompt
 
 class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
     def __init__(self, 
                 text_encoder: TextEmbeddingProvider,
-                prompt_store: PromptStore,
                 embeddings_store: EmbeddingStore,
                 max_chunks: int | None = None,
                 **kwargs
@@ -18,7 +16,6 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
         self.text_encoder = text_encoder
         self.max_chunks = max_chunks
         self.max_tokenizer_length = text_encoder.max_tokenizer_length
-        self.prompt_store = prompt_store
         self.embeddings_store = embeddings_store
 
     # All chunks share the same item_id (url or file) so that chunks are group
@@ -27,7 +24,9 @@ class PromptIndexer(BatchProcessor[Prompt, ItemEmbedding]):
         chunks = chunk_text(item.content, self.max_tokenizer_length)
         embeddings = self.text_encoder.embed_batch(chunks)
         text_prototype = generate_prototype_embedding(embeddings)
-        return ItemEmbedding(item.prompt_id, text_prototype)
+        return ItemEmbedding(item.prompt_id, text_prototype, data=item.content, metadata=item.metadata.model_dump())
              
     async def on_batch_complete(self, batch):
+        if len(batch) == 0:
+            return
         self.embeddings_store.add(batch)
