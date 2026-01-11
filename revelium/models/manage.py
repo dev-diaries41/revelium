@@ -1,18 +1,14 @@
-from __future__ import annotations
-
 import shutil
 import tempfile
 import urllib.request
 from pathlib import Path
-from typing import Optional
 from revelium.providers.types import LocalTextEmbeddingModel
 from revelium.constants import MODEL_REGISTRY
 
 
 class ModelManager:
-    DEFAULT_MODEL_DIR = Path.home() / ".cache" / "revelium" / "models"
-    def __init__(self, root_dir: Optional[str] = None):
-        self.root_dir = Path(root_dir or self.DEFAULT_MODEL_DIR).expanduser().resolve()
+    def __init__(self, root_dir: str):
+        self.root_dir = Path(root_dir).expanduser().resolve()
         self.root_dir.mkdir(parents=True, exist_ok=True)
 
     def download_model(self, name: LocalTextEmbeddingModel, timeout: int = 30) -> Path:
@@ -23,9 +19,7 @@ class ModelManager:
         - Returns the Path to the downloaded file.
         """
 
-        model_info = MODEL_REGISTRY[name]
         target = self.get_model_path(name)
-        print(target)
         if not str(target).startswith(str(self.root_dir)):
             raise ValueError("Resolved target path is outside the configured root_dir")
 

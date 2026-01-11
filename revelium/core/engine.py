@@ -1,6 +1,7 @@
 import os
 import chromadb
 
+from pathlib import Path
 from numpy import ndarray
 from datetime import datetime
 from typing import List, Dict, Optional, Iterable
@@ -26,11 +27,13 @@ from revelium.schemas.llm import LLMClientConfig
 from revelium.providers.llm.llm_client import LLMClient
 from revelium.schemas.revelium_config import ReveliumConfig
 from revelium.utils import  paginated_read, paginated_read_until_empty
+from revelium.models.manage import ModelManager
 
 
 class Revelium():
     CLUSTER_TYPE = "cluster"
     PROMPT_TYPE = "prompt"
+    DEFAULT_MODEL_DIR = Path.home() / ".cache" / "revelium" / "models"
 
     def __init__(self, 
         config: Optional[ReveliumConfig] = None,                 
@@ -43,6 +46,7 @@ class Revelium():
                  ):
         os.makedirs(DB_DIR, exist_ok=True)
         self.config = config or ReveliumConfig()
+        self.model_manager = ModelManager(Revelium.DEFAULT_MODEL_DIR) # must me initialised before textembedder
         self.text_embedder = text_embedder or self._get_text_embedder(self.config.text_embedder, self.config.provider_api_key)
         self.llm = llm_client or  OpenAIClient(self.config.provider_api_key, LLMClientConfig(model_name=self.config.provider_model, system_prompt=self.config.system_prompt))
         self.clusterer = clusterer or IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking)  
@@ -62,7 +66,7 @@ class Revelium():
             ) 
         
         self.indexer =  PromptIndexer(self.text_embedder, listener=indexer_listener, embeddings_store=self.prompt_embedding_store, batch_size=100, max_concurrency=4)
-    
+
     async def index_prompts(self, prompts: List[Prompt]):
         return await self.indexer.run(prompts)
     
@@ -239,6 +243,7 @@ class Revelium():
             for cluster_id, embedding, metadata in zip(batch.ids, batch.embeddings, batch.metadatas):
                 clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
         return clusters
+        
     
     # helps ensure each collection get embeddings of the right size
     def _get_embedding_collection_name(self, type: str, model: TextEmbeddingModel, embed_dim: int) -> str:
@@ -250,7 +255,12 @@ class Revelium():
                 raise ValueError("Missing OpenAI API key")
             return OpenAITextEmbedder(provider_api_key, model=model)
         else:
-            return MiniLmTextEmbedder(MINILM_MODEL_PATH, MINILM_MAX_TOKENS)
+            if not self.model_manager.model_exists(model):
+                print(f"{model} doesn't exsiting. Downloading model now...")
+                path = self.model_manager.download_model(model)
+                return MiniLmTextEmbedder(path, MINILM_MAX_TOKENS)
+            path = self.model_manager.get_model_path(model)
+            return MiniLmTextEmbedder(path, MINILM_MAX_TOKENS)
 
     def _get_labelling_prompt(self, cluster_id: str, existing_labels: list[str], sample_prompts: list[str]) -> str:
         return f"""## ClusterId: {cluster_id}\n\n##Existing labels {existing_labels} Cluster sample_prompts \n\n {sample_prompts}"""
