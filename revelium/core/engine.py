@@ -4,13 +4,14 @@ from numpy import ndarray
 from datetime import datetime
 from typing import List, Dict, Optional, Iterable
 
-from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult, ItemEmbeddingUpdate
+from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult, ItemEmbeddingUpdate, Include
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
 from smartscan.processor import ProcessorListener
 
 from revelium.schemas.revelium_config import ReveliumConfig
+from revelium.schemas.api import ClusterNoEmbeddings
 from revelium.prompts.types import Prompt, PromptMetadata, PromptsOverviewInfo
 from revelium.providers.types import TextEmbeddingModel
 from revelium.schemas.llm import LLMClassificationResult
@@ -77,9 +78,12 @@ class Revelium():
 
     def cluster_prompts(self) -> ClusterResult:
         ids, embeddings = self.get_all_prompt_embeddings()
-        existing_clusters = self.get_existing_clusters()
+        existing_clusters = self.get_all_clusters()
         self.clusterer.clusters = existing_clusters # temp workaround, updated a clearner way
-        return self.clusterer.cluster(ids, embeddings)
+        result =  self.clusterer.cluster(ids, embeddings)
+        self.update_clusters(result.clusters, result.merges)
+        self.update_prompts(result.assignments, result.merges)
+        return result
                
     def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
         prompt_ids = [str(k) for k in assignments.keys()]
@@ -134,19 +138,8 @@ class Revelium():
         if merges:
             self.cluster_embedding_store.delete(list(merged_ids))
 
-        self.cluster_embedding_store.update(cluster_embeddings)
+        self.cluster_embedding_store.upsert(cluster_embeddings)
 
-    def get_cluster_metadata(self, cluster_id: str) -> Optional[ClusterMetadata]:
-        result = self.cluster_embedding_store.get(limit=1, filter={"cluster_id": cluster_id}, include=['metadatas'])
-        if len(result.metadatas) == 0 or not result.metadatas[0]:
-            return None
-        return ClusterMetadata(**result.metadatas[0])
-    
-    def get_cluster_metadata_batch(self) -> Optional[List[ClusterMetadata]]:
-        result = self.cluster_embedding_store.get(include=['metadatas'])
-        if len(result.metadatas) == 0 or not result.metadatas[0]:
-            return None
-        return[ ClusterMetadata(**m) for m in result.metadatas]
 
     def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments) -> ClusterAccuracy:
         return calculate_cluster_accuracy(true_labels, predicted_clusters)
@@ -228,8 +221,24 @@ class Revelium():
             labels.extend([m.get("label") for m in batch.metadatas])
         return labels
     
+
+    def get_clusters(self, cluster_id: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None, include: Include = ['metadatas', 'embeddings']) -> dict[ClusterId, Cluster | ClusterNoEmbeddings]:
+        clusters: Dict[ClusterId, Cluster] = {}
+        results = self.cluster_embedding_store.get(
+                include=include,
+                filter={"cluster_id": cluster_id} if cluster_id else None,
+                limit=limit,
+                offset=offset
+                )
+        if "embeddings" in include:
+            for cluster_id, embedding, metadata in zip(results.ids, results.embeddings, results.metadatas):
+                clusters[cluster_id] = Cluster(cluster_id, embedding, ClusterMetadata(**metadata), label=metadata.get("label"))
+        else:
+            for cluster_id, metadata in zip(results.ids, results.metadatas):
+                clusters[cluster_id] = ClusterNoEmbeddings(prototype_id=cluster_id, metadata=ClusterMetadata(**metadata), label=metadata.get("label"))
+        return clusters
     
-    def get_existing_clusters(self) -> dict[ClusterId, Cluster]:
+    def get_all_clusters(self) -> dict[ClusterId, Cluster]:
         clusters: Dict[ClusterId, Cluster] = {}
         for batch in paginated_read_until_empty(
             fetch_fn=lambda offset, limit: self.cluster_embedding_store.get(

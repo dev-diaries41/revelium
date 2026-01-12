@@ -36,6 +36,21 @@ class ChromaDBEmbeddingStore(EmbeddingStore[str, chromadb.CollectionMetadata]):
         else:
             self.chroma_colletion.update(ids, metadatas=metadatas)
 
+    def upsert(self, items):
+        ids, embeddings, metadatas = [], [], []
+        has_any_embedding = any(item.embedding is not None for item in items)
+
+        for item in items:
+            ids.append(item.item_id)
+            metadatas.append(item.metadata)
+            if has_any_embedding:
+                embeddings.append(item.embedding)
+        
+        if has_any_embedding:
+            self.chroma_colletion.upsert(ids, embeddings, metadatas)
+        else:
+            self.chroma_colletion.upsert(ids, metadatas=metadatas)
+
     
     def delete(self, ids = None, filter = None):
         return self.chroma_colletion.delete(ids,filter)

@@ -1,19 +1,19 @@
 import os 
 import json 
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 
 from pydantic import ValidationError
-from typing import List
+from typing import List, Optional
 from dataclasses import asdict
 from smartscan.processor.metrics import MetricsSuccess
 
 from revelium.prompts.types import Prompt
 from revelium.core.engine import Revelium, ReveliumConfig
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse, GetPromptsOverviewResponse, GetClusterMetadataBatchResponse
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse
 
 from dotenv import load_dotenv
 
@@ -103,7 +103,7 @@ async def add_prompts_file(file: UploadFile = File(...)):
     return JSONResponse(result_dict)
 
 
-@app.post("/api/prompts/")
+@app.post("/api/prompts")
 async def get_prompts(req: GetPromptsRequest):
     try:
         if len(req.prompt_ids) == 0:
@@ -131,34 +131,27 @@ async def get_prompts_overview():
             raise HTTPException(status_code=500, detail="Error getting prompt overview")
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
 
-def _handle_clustering():
-    result = revelium.cluster_prompts()
-    revelium.update_prompts(result.assignments, result.merges)
-    revelium.update_clusters(result.clusters, result.merges)
-        
-@app.post("/api/clusters")
+
+@app.post("/api/clusters/start")
 async def cluster_prompts():
     try:
-        await run_in_threadpool(_handle_clustering)
+        res = await run_in_threadpool(revelium.cluster_prompts)
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail="Internal server error")
     return JSONResponse({"status": "in_progress"}) # testing only
 
-@app.get("/api/clusters/metadata")
-async def get_cluster_metadata(cluster_id: str):
+@app.get("/api/clusters")
+async def get_clusters(cluster_id: Optional[str], limit: Optional[str] = Query(None), offset: Optional[str] = Query(None)):
     try:
-        metadata = await run_in_threadpool(revelium.get_cluster_metadata, cluster_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal server error")
-    return JSONResponse(GetClusterMetadataResponse(metadata=metadata).model_dump())
+        limit_int = int(limit) if limit not in (None, "") else None
+        offset_int = int(offset) if offset not in (None, "") else None
 
-@app.get("/api/clusters/metadata/batch")
-async def get_cluster_metadatas():
-    try:
-        metadatas = await run_in_threadpool(revelium.get_cluster_metadata_batch)
+        clusters = await run_in_threadpool(revelium.get_clusters, cluster_id, limit_int, offset_int, ['metadatas'])
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail="Internal server error")
-    return JSONResponse(GetClusterMetadataBatchResponse(metadatas=metadatas).model_dump())
+    return JSONResponse(GetClustersResponse(clusters=list(clusters.values())).model_dump())
 
 
 @app.get("/api/clusters/count")
