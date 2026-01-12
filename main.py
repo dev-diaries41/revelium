@@ -3,7 +3,7 @@ from revelium.prompts.types import Prompt
 from client.revelium_client import ReveliumClient
 
 async def main():
-    client = ReveliumClient("http://localhost:8000")
+    client = ReveliumClient("http://127.0.0.1:8000")
 
     # Add prompts via JSON body
     prompts = [

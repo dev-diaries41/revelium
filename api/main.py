@@ -12,7 +12,7 @@ def main():
 
     args, _ = parser.parse_known_args()
 
-    uvicorn.run(app, port=args.port, workers=args.workers)
+    uvicorn.run(app, host="0.0.0.0", port=args.port, workers=args.workers)
    
 if __name__ == "__main__":
     main()

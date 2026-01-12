@@ -1,0 +1,12 @@
+# Dirs
+config/
+.pytests_cache/
+__pycache__/
+venv/
+build/
+*.egg-info
+output/
+
+# Files
+*.onnx
+TODO.md
