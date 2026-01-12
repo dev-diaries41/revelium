@@ -8,9 +8,11 @@ from smartscan import ClusterMetadata
 class ReveliumClient:
     ADD_PROMPTS_ENDPOINT = "/api/prompts/add"
     ADD_PROMPTS_FILE_ENDPOINT = "/api/prompts/add/file"
-    GET_PROMPTS_ENDPOINT = "/api/prompts/"
+    GET_PROMPTS_ENDPOINT = "/api/prompts"
     GET_PROMPTS_OVERVIEW_ENDPOINT = "/api/prompts/overview"
-    GET_CLUSTER_META_ENDPOINT = "/api/clusters/metadata"
+    BASE_CLUSTER_ENDPOINT = "/api/clusters"
+    GET_CLUSTER_META_ENDPOINT = f"{BASE_CLUSTER_ENDPOINT}/metadata"
+    GET_CLUSTER_META_BATCH_ENDPOINT = f"{GET_CLUSTER_META_ENDPOINT}/batch"
     GET_PROMPTS_COUNT_ENDPOINT = "/api/prompts/count"
     GET_CLUSTER_COUNT_ENDPOINT = "/api/clusters/count"
     GET_LABELS_ENDPOINT = "/api/labels"
@@ -64,6 +66,16 @@ class ReveliumClient:
             return res.json()
 
 
+    ## NOTE: May have to queue and return job id
+    async def cluster_prompts(self) -> dict:
+        url = f"{self.base_url}{ReveliumClient.BASE_CLUSTER_ENDPOINT}"
+        async with httpx.AsyncClient() as client:
+            res = await client.post(url)
+            if res.status_code != 200:
+                raise Exception(f"Error clustering prompts: {res}")
+            return res.json()
+        
+
     async def get_cluster_metadata(self, cluster_id: str) -> Optional[ClusterMetadata]:
         url = f"{self.base_url}{ReveliumClient.GET_CLUSTER_META_ENDPOINT}"
         params = ClusterIdParam(cluster_id=cluster_id)
@@ -74,6 +86,14 @@ class ReveliumClient:
                 raise Exception(f"Error getting metadata: {res.text}")
             return res.json().get("metadata")
 
+    async def get_cluster_metadata_batch(self) -> Optional[List[ClusterMetadata]]:
+        url = f"{self.base_url}{ReveliumClient.GET_CLUSTER_META_BATCH_ENDPOINT}"
+
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url)
+            if res.status_code != 200:
+                raise Exception(f"Error getting metadata batch: {res.text}")
+            return res.json().get("metadatas")
    
     async def count_prompts(self) -> int:
         url = f"{self.base_url}{ReveliumClient.GET_PROMPTS_COUNT_ENDPOINT}"

@@ -15,20 +15,23 @@ async def main():
     #     print(await client.add_prompts(prompts=prompts))
 
     # Count prompts
-    print("Total prompts:", await client.count_prompts())
+    # print("Total prompts:", await client.count_prompts())
 
     # Count clusters
     print("Total clusters:", await client.count_clusters())
 
     print("Cluster metadata:", await client.get_cluster_metadata("fce4cfdc44b3ea3f"))
 
+    print("Cluster metadata batch:", await client.get_cluster_metadata_batch())
+
+    print("Clustering:", await client.cluster_prompts())
     
-    print("Prompts:", await client.get_prompts([p.get("prompt_id") if isinstance(p, dict) else p.prompt_id for p in prompts]))
+    # print("Prompts:", await client.get_prompts([p.get("prompt_id") if isinstance(p, dict) else p.prompt_id for p in prompts]))
 
-    print("Labels:", await client.get_existing_labels())
+    # print("Labels:", await client.get_existing_labels())
 
-    print("Overview:", await client.get_prompts_overview())
+    # print("Overview:", await client.get_prompts_overview())
 
-    print("Add prompts file:", await client.add_prompts_file("dummy_prompts.json"))
+    # print("Add prompts file:", await client.add_prompts_file("dummy_prompts.json"))
 
 asyncio.run(main())

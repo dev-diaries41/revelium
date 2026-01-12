@@ -13,7 +13,7 @@ from smartscan.processor.metrics import MetricsSuccess
 
 from revelium.prompts.types import Prompt
 from revelium.core.engine import Revelium, ReveliumConfig
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse, GetPromptsOverviewResponse
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse, GetPromptsOverviewResponse, GetClusterMetadataBatchResponse
 
 from dotenv import load_dotenv
 
@@ -131,6 +131,18 @@ async def get_prompts_overview():
             raise HTTPException(status_code=500, detail="Error getting prompt overview")
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
 
+def _handle_clustering():
+    result = revelium.cluster_prompts()
+    revelium.update_prompts(result.assignments, result.merges)
+    revelium.update_clusters(result.clusters, result.merges)
+        
+@app.post("/api/clusters")
+async def cluster_prompts():
+    try:
+        await run_in_threadpool(_handle_clustering)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse({"status": "in_progress"}) # testing only
 
 @app.get("/api/clusters/metadata")
 async def get_cluster_metadata(cluster_id: str):
@@ -139,6 +151,14 @@ async def get_cluster_metadata(cluster_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
     return JSONResponse(GetClusterMetadataResponse(metadata=metadata).model_dump())
+
+@app.get("/api/clusters/metadata/batch")
+async def get_cluster_metadatas():
+    try:
+        metadatas = await run_in_threadpool(revelium.get_cluster_metadata_batch)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse(GetClusterMetadataBatchResponse(metadatas=metadatas).model_dump())
 
 
 @app.get("/api/clusters/count")
