@@ -15,7 +15,7 @@ def get_placeholder_prompts() -> list[Prompt]:
     return all_data
 
 def get_dummy_data(n: int = 100, offset = 0) -> list[Prompt]:
-    return [ Prompt(f"prompt_{i + offset}", random_string(550)) for i in range(n)]
+    return [ Prompt(prompt_id = f"prompt_{i + offset}", content=random_string(550)).model_dump() for i in range(n)]
 
 def random_string(n):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=n))

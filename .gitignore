@@ -8,6 +8,7 @@ build/
 *.egg-info
 output/
 models/
+dev/
 
 # Files
 .env

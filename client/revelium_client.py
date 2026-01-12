@@ -7,6 +7,7 @@ from smartscan import ClusterMetadata
 
 class ReveliumClient:
     ADD_PROMPTS_ENDPOINT = "/api/prompts/add"
+    ADD_PROMPTS_FILE_ENDPOINT = "/api/prompts/add/file"
     GET_PROMPTS_ENDPOINT = "/api/prompts/"
     GET_PROMPTS_OVERVIEW_ENDPOINT = "/api/prompts/overview"
     GET_CLUSTER_META_ENDPOINT = "/api/clusters/metadata"
@@ -28,6 +29,20 @@ class ReveliumClient:
             res = await client.post(url, json=payload.model_dump())
             if res.status_code != 200:
                 raise Exception(f"Error adding prompts: {res.text}")
+            return res.json()
+        
+    
+    async def add_prompts_file(self, file_path: str) -> dict:
+        """
+        Upload a JSON file containing prompts.
+        """
+        url = f"{self.base_url}{ReveliumClient.ADD_PROMPTS_FILE_ENDPOINT}"
+        async with httpx.AsyncClient() as client:
+            with open(file_path, "rb") as f:
+                files = {"file": (file_path, f, "application/json")}
+                res = await client.post(url, files=files)
+            if res.status_code != 200:
+                raise Exception(f"Error adding prompts from file: {res.text}")
             return res.json()
         
     async def get_prompts(self, ids: List[str]) -> List[Prompt]:

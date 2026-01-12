@@ -1,14 +1,19 @@
 import os 
+import json 
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 
+from pydantic import ValidationError
+from typing import List
 from dataclasses import asdict
 from smartscan.processor.metrics import MetricsSuccess
+
+from revelium.prompts.types import Prompt
 from revelium.core.engine import Revelium, ReveliumConfig
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, AddPromptsResponse, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse, GetPromptsOverviewResponse
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse, GetPromptsOverviewResponse
 
 from dotenv import load_dotenv
 
@@ -47,6 +52,8 @@ app.add_middleware(
 #         print("Client disconnected")
 
 
+
+
 @app.post("/api/prompts/add")
 async def add_prompts(req: AddPromptsRequest):
     try:
@@ -59,6 +66,40 @@ async def add_prompts(req: AddPromptsRequest):
         result_dict: MetricsSuccess = {k: v for k, v in asdict(result).items() if k != "error"}
     except Exception as e:
             raise HTTPException(status_code=500, detail="Error adding prompts")
+    return JSONResponse(result_dict)
+
+
+
+@app.post("/api/prompts/add/file")
+async def add_prompts_file(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        prompts_data = json.loads(content)
+
+        # Validate prompts
+        prompts: List[Prompt] = [Prompt(**p) for p in prompts_data or  []]
+
+        if not prompts or len(prompts) == 0:
+            raise HTTPException(status_code=400, detail="Missing prompts in file")
+        
+        try:
+            prompts: List[Prompt] = [Prompt(**p) for p in prompts_data or []]
+        except ValidationError as ve:
+            raise HTTPException(status_code=400, detail=f"Invalid prompts: {ve.errors()}")
+
+        if not prompts or len(prompts) == 0:
+            raise HTTPException(status_code=400, detail="Missing prompts in file")
+
+
+        # TODO: Add job to queue and return JobReceipt
+        result = await revelium.index_prompts(prompts)
+        if hasattr(result, "error"):
+            raise result.error
+
+        result_dict: MetricsSuccess = {k: v for k, v in asdict(result).items()}
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="Internal server error")
     return JSONResponse(result_dict)
 
 
