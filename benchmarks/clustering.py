@@ -1,7 +1,6 @@
 import random
 import json
 import os
-import asyncio
 
 from dotenv import load_dotenv
 
@@ -42,10 +41,6 @@ def run(revelium: Revelium, plot_output: str):
     result, time = cluster(revelium)
     # for c in result.clusters.values():
     #     print(c.metadata)
-    
-    ## Assign clusters and update
-    revelium.update_prompts(result.assignments, result.merges)
-    revelium.update_clusters(result.clusters, result.merges)
 
     # Plot to visualise prompt clusters
     ids, embeddings = revelium.get_all_prompt_embeddings()
