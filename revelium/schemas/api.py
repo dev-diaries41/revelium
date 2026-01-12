@@ -75,6 +75,10 @@ class GetLabelsResponse(BaseModel):
 class GetClusterMetadataResponse(BaseModel):
     metadata: Optional[ClusterMetadata]
 
+
+class GetClusterMetadataBatchResponse(BaseModel):
+    metadatas: Optional[List[ClusterMetadata]]
+
 class GetPromptsOverviewResponse(PromptsOverviewInfo):
     pass
     

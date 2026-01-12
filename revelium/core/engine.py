@@ -141,6 +141,12 @@ class Revelium():
         if len(result.metadatas) == 0 or not result.metadatas[0]:
             return None
         return ClusterMetadata(**result.metadatas[0])
+    
+    def get_cluster_metadata_batch(self) -> Optional[List[ClusterMetadata]]:
+        result = self.cluster_embedding_store.get(include=['metadatas'])
+        if len(result.metadatas) == 0 or not result.metadatas[0]:
+            return None
+        return[ ClusterMetadata(**m) for m in result.metadatas]
 
     def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments) -> ClusterAccuracy:
         return calculate_cluster_accuracy(true_labels, predicted_clusters)

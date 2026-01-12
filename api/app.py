@@ -13,7 +13,7 @@ from smartscan.processor.metrics import MetricsSuccess
 
 from revelium.prompts.types import Prompt
 from revelium.core.engine import Revelium, ReveliumConfig
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse, GetPromptsOverviewResponse
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClusterMetadataResponse, GetPromptsOverviewResponse, GetClusterMetadataBatchResponse
 
 from dotenv import load_dotenv
 
@@ -139,6 +139,14 @@ async def get_cluster_metadata(cluster_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
     return JSONResponse(GetClusterMetadataResponse(metadata=metadata).model_dump())
+
+@app.get("/api/clusters/metadata/batch")
+async def get_cluster_metadatas():
+    try:
+        metadatas = await run_in_threadpool(revelium.get_cluster_metadata_batch)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse(GetClusterMetadataBatchResponse(metadatas=metadatas).model_dump())
 
 
 @app.get("/api/clusters/count")
