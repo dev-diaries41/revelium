@@ -24,6 +24,7 @@ async def main():
 
     print("Cluster metadata batch:", await client.get_cluster_metadata_batch())
 
+    print("Clustering:", await client.cluster_prompts())
     
     # print("Prompts:", await client.get_prompts([p.get("prompt_id") if isinstance(p, dict) else p.prompt_id for p in prompts]))
 

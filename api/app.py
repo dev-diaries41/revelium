@@ -131,6 +131,18 @@ async def get_prompts_overview():
             raise HTTPException(status_code=500, detail="Error getting prompt overview")
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
 
+def _handle_clustering():
+    result = revelium.cluster_prompts()
+    revelium.update_prompts(result.assignments, result.merges)
+    revelium.update_clusters(result.clusters, result.merges)
+        
+@app.post("/api/clusters")
+async def cluster_prompts():
+    try:
+        await run_in_threadpool(_handle_clustering)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse({"status": "in_progress"}) # testing only
 
 @app.get("/api/clusters/metadata")
 async def get_cluster_metadata(cluster_id: str):

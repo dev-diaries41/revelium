@@ -29,7 +29,7 @@ def cluster(revelium: Revelium) -> tuple[ClusterResult, float]:
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-async def run(revelium: Revelium, plot_output: str):
+def run(revelium: Revelium, plot_output: str):
     results = {}
     revelium.clusterer.clear()
     ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
@@ -44,7 +44,7 @@ async def run(revelium: Revelium, plot_output: str):
     #     print(c.metadata)
     
     ## Assign clusters and update
-    await revelium.update_prompts(result.assignments, result.merges)
+    revelium.update_prompts(result.assignments, result.merges)
     revelium.update_clusters(result.clusters, result.merges)
 
     # Plot to visualise prompt clusters
@@ -72,9 +72,9 @@ async def run(revelium: Revelium, plot_output: str):
         json.dump(result.assignments, f, indent=1, sort_keys=True)
 
 
-async def main():
+def main():
     revelium = Revelium(config=ReveliumConfig(benchmarking=True, chromadb_path=BENCHMARK_CHROMADB_PATH, prompt_store_path=BENCHMARK_PROMPT_STORE_PATH))
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, BENCHMARK_CLUSTERS_PLOT, ".png")
-    await run(revelium, plot_output)
+    run(revelium, plot_output)
 
-asyncio.run(main())
+main()

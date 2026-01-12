@@ -81,7 +81,7 @@ class Revelium():
         self.clusterer.clusters = existing_clusters # temp workaround, updated a clearner way
         return self.clusterer.cluster(ids, embeddings)
                
-    async def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
+    def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
         prompt_ids = [str(k) for k in assignments.keys()]
         metadatas = self.get_prompts_metadata(prompt_ids)
         updated_at = datetime.now().isoformat()
