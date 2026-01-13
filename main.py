@@ -27,6 +27,7 @@ async def main():
     # print("Prompts:", await client.get_prompts([p.get("prompt_id") if isinstance(p, dict) else p.prompt_id for p in prompts]))
 
     # print("Labels:", await client.get_existing_labels())
+    print("Update label:", await client.update_cluster_label(cluster_id="0173bc6fc4524fcaaee3f165410704f7", label="test label"))
 
     print("Overview:", await client.get_prompts_overview())
 

@@ -2,8 +2,7 @@ from typing import List, Optional
 import httpx
 
 from revelium.prompts.types import Prompt, PromptsOverviewInfo
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings
-from smartscan import Cluster
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams
 
 class ReveliumClient:
     ADD_PROMPTS_ENDPOINT = "/api/prompts/add"
@@ -85,6 +84,17 @@ class ReveliumClient:
                 raise Exception(f"Error getting clusters: {res.text}")
             return res.json().get("clusters", [])
    
+
+    async def update_cluster_label(self, cluster_id: str, label: str) -> str:
+        url = f"{self.base_url}{ReveliumClient.BASE_CLUSTER_ENDPOINT}"
+        params = UpdateLabelParams(cluster_id=cluster_id, label=label)
+
+        async with httpx.AsyncClient() as client:
+            res = await client.patch(url, params=params.model_dump())
+            if res.status_code != 200:
+                raise Exception(f"Error updating label: {res.text}")
+            return res.json().get("updated_label")
+        
     async def count_prompts(self) -> int:
         url = f"{self.base_url}{ReveliumClient.COUNT_PROMPTS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
