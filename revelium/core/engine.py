@@ -22,8 +22,7 @@ from revelium.providers.llm.llm_client import LLMClient
 from revelium.models.manage import ModelManager
 from revelium.utils import  paginated_read, paginated_read_until_empty
 from revelium.tokens import embedding_token_cost
-from revelium.constants import MINILM_MAX_TOKENS
-
+from revelium.constants.models import MINILM_MAX_TOKENS
 
 class Revelium():
     CLUSTER_TYPE = "cluster"

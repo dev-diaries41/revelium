@@ -13,7 +13,3 @@ MINILM_MODEL_URL = "https://github.com/dev-diaries41/smartscan-models/releases/d
 MODEL_REGISTRY: Dict[LocalTextEmbeddingModel, ModelInfo] = {
     'all-minilm-l6-v2': ModelInfo(url=MINILM_MODEL_URL, path=MINILM_MODEL_PATH),
 }
-
-# Providers
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-DEFAULT_SYSTEM_PROMPT = "Your objective is to label prompt messages from clusters and label them, returning ClassificationResult. Labels should be one word max 3 words."

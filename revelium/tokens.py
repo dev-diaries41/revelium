@@ -1,7 +1,7 @@
 import tiktoken
 from revelium.providers.types import TextEmbeddingModel
 from smartscan.providers import MiniLmTextEmbedder
-from revelium.constants import MINILM_MODEL_PATH
+from revelium.constants.models import MINILM_MODEL_PATH
 
 
 def count_tokens_embedding(text: str, model: TextEmbeddingModel) -> int:

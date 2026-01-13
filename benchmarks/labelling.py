@@ -11,8 +11,8 @@ from revelium.constants import DEFAULT_SYSTEM_PROMPT
 from revelium.core.engine import Revelium, ReveliumConfig
 from revelium.providers.llm.openai import OpenAIClient
 from revelium.schemas.llm import LLMClientConfig
+from revelium.constants.llms import OPENAI_API_KEY
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "labelling_benchmarks.jsonl")
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)

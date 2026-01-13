@@ -3,7 +3,8 @@ import tempfile
 import urllib.request
 from pathlib import Path
 from revelium.providers.types import LocalTextEmbeddingModel
-from revelium.constants import BASE_DIR, MODEL_REGISTRY
+from revelium.constants import BASE_DIR
+from revelium.constants.models import MODEL_REGISTRY
 
 
 class ModelManager:

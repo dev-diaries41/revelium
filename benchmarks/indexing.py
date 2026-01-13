@@ -11,10 +11,10 @@ from revelium.prompts.types import Prompt
 from revelium.data import get_dummy_data, get_placeholder_prompts
 from revelium.core.engine import Revelium, ReveliumConfig
 from revelium.prompts.indexer_listener import ProgressBarIndexerListener
+from revelium.constants.llms import OPENAI_API_KEY
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "indexing_benchmarks.jsonl")
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)

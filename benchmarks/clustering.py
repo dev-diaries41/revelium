@@ -10,9 +10,9 @@ from dataclasses import asdict
 from smartscan import  ItemId, ClusterResult
 from revelium.utils import with_time, get_new_filename
 from revelium.core.engine import Revelium, ReveliumConfig
-from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
 from revelium.plot import plot_clusters
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_PROMPT_STORE_PATH, BENCHMARK_DIR
+
 BENCHMARK_OUTPUT_PATH = os.path.join(BENCHMARK_DIR, "clustering_benchmarks.jsonl")
 BENCHMARK_ASSIGNMENTS_PATH = os.path.join(BENCHMARK_DIR, "assignments_clustering_benchmarks.jsonl")
 BENCHMARK_PLOTS_DIR = os.path.join(BENCHMARK_DIR, "plots")

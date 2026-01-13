@@ -1,26 +1,17 @@
 from typing import List, Optional
 import httpx
 
+from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, GET_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT
 from revelium.prompts.types import Prompt, PromptsOverviewInfo
 from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams
 
 class ReveliumClient:
-    ADD_PROMPTS_ENDPOINT = "/api/prompts/add"
-    ADD_PROMPTS_FILE_ENDPOINT = "/api/prompts/add/file"
-    GET_PROMPTS_ENDPOINT = "/api/prompts"
-    GET_PROMPTS_OVERVIEW_ENDPOINT = "/api/prompts/overview"
-    COUNT_PROMPTS_ENDPOINT = "/api/prompts/count"
-    BASE_CLUSTER_ENDPOINT = "/api/clusters"
-    START_CLUSTERING_ENDPOINT = f"{BASE_CLUSTER_ENDPOINT}/start"
-    COUNT_CLUSTERS_ENDPOINT = "/api/clusters/count"
-    GET_LABELS_ENDPOINT = "/api/labels"
-    
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
 
 
     async def add_prompts(self, prompts: List[Prompt]) -> dict:
-        url = f"{self.base_url}{ReveliumClient.ADD_PROMPTS_ENDPOINT}"
+        url = f"{self.base_url}{ADD_PROMPTS_ENDPOINT}"
         # Convert dataclasses to dicts
         # TODD: chane prompts to pydantic basemodel
         payload = AddPromptsRequest(prompts=prompts)
@@ -36,7 +27,7 @@ class ReveliumClient:
         """
         Upload a JSON file containing prompts.
         """
-        url = f"{self.base_url}{ReveliumClient.ADD_PROMPTS_FILE_ENDPOINT}"
+        url = f"{self.base_url}{ADD_PROMPTS_FILE_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             with open(file_path, "rb") as f:
                 files = {"file": (file_path, f, "application/json")}
@@ -46,7 +37,7 @@ class ReveliumClient:
             return res.json()
         
     async def get_prompts(self, ids: List[str]) -> List[Prompt]:
-        url = f"{self.base_url}{ReveliumClient.GET_PROMPTS_ENDPOINT}"
+        url = f"{self.base_url}{GET_PROMPTS_ENDPOINT}"
         payload = GetPromptsRequest(prompt_ids=ids)
 
         async with httpx.AsyncClient() as client:
@@ -56,7 +47,7 @@ class ReveliumClient:
             return res.json().get('prompts', [])
         
     async def get_prompts_overview(self) -> PromptsOverviewInfo:
-        url = f"{self.base_url}{ReveliumClient.GET_PROMPTS_OVERVIEW_ENDPOINT}"
+        url = f"{self.base_url}{GET_PROMPTS_OVERVIEW_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
             if res.status_code != 200:
@@ -66,7 +57,7 @@ class ReveliumClient:
 
     ## NOTE: May have to queue and return job id
     async def cluster_prompts(self) -> dict:
-        url = f"{self.base_url}{ReveliumClient.START_CLUSTERING_ENDPOINT}"
+        url = f"{self.base_url}{START_CLUSTERING_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.post(url)
             if res.status_code != 200:
@@ -75,7 +66,7 @@ class ReveliumClient:
         
 
     async def get_clusters(self, cluster_id: Optional[str] = None, limit: Optional[str] = None, offset: Optional[str] = None ) ->List[ClusterNoEmbeddings]:
-        url = f"{self.base_url}{ReveliumClient.BASE_CLUSTER_ENDPOINT}"
+        url = f"{self.base_url}{BASE_CLUSTER_ENDPOINT}"
         params = GetClusterRequestParams(cluster_id=cluster_id, limit=limit, offset=offset)
 
         async with httpx.AsyncClient() as client:
@@ -86,7 +77,7 @@ class ReveliumClient:
    
 
     async def update_cluster_label(self, cluster_id: str, label: str) -> str:
-        url = f"{self.base_url}{ReveliumClient.BASE_CLUSTER_ENDPOINT}"
+        url = f"{self.base_url}{BASE_CLUSTER_ENDPOINT}"
         params = UpdateLabelParams(cluster_id=cluster_id, label=label)
 
         async with httpx.AsyncClient() as client:
@@ -96,7 +87,7 @@ class ReveliumClient:
             return res.json().get("updated_label")
         
     async def count_prompts(self) -> int:
-        url = f"{self.base_url}{ReveliumClient.COUNT_PROMPTS_ENDPOINT}"
+        url = f"{self.base_url}{COUNT_PROMPTS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
             if res.status_code != 200:
@@ -105,7 +96,7 @@ class ReveliumClient:
 
    
     async def count_clusters(self) -> int:
-        url = f"{self.base_url}{ReveliumClient.COUNT_CLUSTERS_ENDPOINT}"
+        url = f"{self.base_url}{COUNT_CLUSTERS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
             if res.status_code != 200:
@@ -113,7 +104,7 @@ class ReveliumClient:
             return res.json().get("count", 0)
 
     async def get_existing_labels(self) -> list[str]:
-        url = f"{self.base_url}{ReveliumClient.GET_LABELS_ENDPOINT}"
+        url = f"{self.base_url}{GET_LABELS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
             if res.status_code != 200:
