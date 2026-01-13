@@ -142,7 +142,7 @@ async def cluster_prompts():
     return JSONResponse({"status": "in_progress"}) # testing only
 
 @app.get("/api/clusters")
-async def get_clusters(cluster_id: Optional[str], limit: Optional[str] = Query(None), offset: Optional[str] = Query(None)):
+async def get_clusters(cluster_id: Optional[str] = Query(None), limit: Optional[str] = Query(None), offset: Optional[str] = Query(None)):
     try:
         limit_int = int(limit) if limit not in (None, "") else None
         offset_int = int(offset) if offset not in (None, "") else None
