@@ -13,7 +13,7 @@ from smartscan.processor.metrics import MetricsSuccess
 
 from revelium.prompts.types import Prompt
 from revelium.core.engine import Revelium, ReveliumConfig
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse, UpdateLabelResponse
 
 from dotenv import load_dotenv
 
@@ -29,7 +29,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],          
-    allow_methods=["POST", "OPTIONS", "GET"],
+    allow_methods=["POST", "OPTIONS", "GET", "PATCH"],
     allow_headers=["*"],
     max_age=3600,
 )
@@ -152,6 +152,16 @@ async def get_clusters(cluster_id: Optional[str] = Query(None), limit: Optional[
         print(e)
         raise HTTPException(status_code=500, detail="Internal server error")
     return JSONResponse(GetClustersResponse(clusters=list(clusters.values())).model_dump())
+
+
+@app.patch("/api/clusters")
+async def get_clusters(cluster_id: str, label: str):
+    try:
+        updated = await run_in_threadpool(revelium.update_cluster_label, cluster_id, label)
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse(UpdateLabelResponse(updated_label=label).model_dump())
 
 
 @app.get("/api/clusters/count")

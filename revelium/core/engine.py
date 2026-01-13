@@ -141,6 +141,20 @@ class Revelium():
         self.cluster_embedding_store.upsert(cluster_embeddings)
 
 
+    def update_cluster_label(self, cluster_id: str, label: str) -> bool:
+        """
+        Update the embedding store with clusters, applying merges if provided.
+        Old clusters that have been merged are removed from the store.
+        """
+        result = self.get_clusters(cluster_id=cluster_id, include=['metadatas'])
+        if(len(result)) == 0: return False
+        updated_meta=result[cluster_id].metadata
+        updated_meta.label = label
+        updated_cluster = ItemEmbeddingUpdate(item_id=cluster_id, metadata=updated_meta)
+        self.cluster_embedding_store.upsert(updated_cluster)
+        return True
+
+
     def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments) -> ClusterAccuracy:
         return calculate_cluster_accuracy(true_labels, predicted_clusters)
     

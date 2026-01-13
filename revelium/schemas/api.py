@@ -88,3 +88,11 @@ class ClusterNoEmbeddings(BaseModel):
 class GetClustersResponse(BaseModel):
     clusters: List[ClusterNoEmbeddings]
 
+
+class UpdateLabelParams(BaseModel):
+    cluster_id: str
+    label: str
+
+class UpdateLabelResponse(BaseModel):
+    updated_label: str
+
