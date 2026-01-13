@@ -150,8 +150,8 @@ class Revelium():
         if(len(result)) == 0: return False
         updated_meta=result[cluster_id].metadata
         updated_meta.label = label
-        updated_cluster = ItemEmbeddingUpdate(item_id=cluster_id, metadata=updated_meta)
-        self.cluster_embedding_store.upsert(updated_cluster)
+        updated_cluster = ItemEmbeddingUpdate(item_id=cluster_id, metadata=updated_meta.model_dump())
+        self.cluster_embedding_store.update([updated_cluster])
         return True
 
 
@@ -239,8 +239,8 @@ class Revelium():
     def get_clusters(self, cluster_id: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None, include: Include = ['metadatas', 'embeddings']) -> dict[ClusterId, Cluster | ClusterNoEmbeddings]:
         clusters: Dict[ClusterId, Cluster] = {}
         results = self.cluster_embedding_store.get(
+                ids = [cluster_id] if cluster_id else None,
                 include=include,
-                filter={"cluster_id": cluster_id} if cluster_id else None,
                 limit=limit,
                 offset=offset
                 )

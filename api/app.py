@@ -158,6 +158,8 @@ async def get_clusters(cluster_id: Optional[str] = Query(None), limit: Optional[
 async def get_clusters(cluster_id: str, label: str):
     try:
         updated = await run_in_threadpool(revelium.update_cluster_label, cluster_id, label)
+        if not updated:
+            raise ValueError("Label not updated")
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail="Internal server error")
