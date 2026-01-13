@@ -9,14 +9,16 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import ValidationError
 from typing import List, Optional
 from dataclasses import asdict
+
+from smartscan import ItemId
 from smartscan.processor.metrics import MetricsSuccess
 
 from revelium.prompts.types import Prompt
 from revelium.core.engine import Revelium, ReveliumConfig
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse, UpdateLabelResponse
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse, UpdateLabelResponse, GetClustersAccuracyResponse
 
 from dotenv import load_dotenv
-from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT
+from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT
 from revelium.constants.llms import OPENAI_API_KEY
 
 load_dotenv()
@@ -109,7 +111,7 @@ async def get_prompts(req: GetPromptsRequest):
     try:
         if len(req.prompt_ids) == 0:
             raise HTTPException(status_code=400, detail="Missing prompt ids")
-        prompts = await run_in_threadpool(revelium.get_prompts_by_ids, req.prompt_ids)
+        prompts = await run_in_threadpool(revelium.get_prompts, req.prompt_ids)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
@@ -182,3 +184,14 @@ async def get_existing_labels():
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
     return JSONResponse(GetLabelsResponse(labels=labels).model_dump())
+
+
+@app.get(GET_CLUSTER_ACCURACY_ENDPOINT)
+async def get_cluster_accuracy():
+    try:
+        accuracy = await run_in_threadpool(revelium.calculate_cluster_accuracy)
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="Internal server error")
+    return JSONResponse(GetClustersAccuracyResponse(accuracy=accuracy).model_dump())
+

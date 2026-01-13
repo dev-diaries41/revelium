@@ -48,7 +48,7 @@ class TestReveliumClient:
         client, _ = setup_client
         label = "test label"
         update_result = await client.update_cluster_label(
-            cluster_id="0173bc6fc4524fcaaee3f165410704f7",  # Replace with valid cluster_id
+            cluster_id="0173bc6fc4524fcaaee3f165410704f7",
             label="test label"
         )
         assert update_result == label
@@ -62,3 +62,10 @@ class TestReveliumClient:
         client, _ = setup_client
         add_file_result = await client.add_prompts_file("output/dummy_prompts.json")
         assert add_file_result is not None
+
+    async def test_prompts_overview(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+        client, _ = setup_client
+        accuracy = await client.get_cluster_accuracy()
+        print(accuracy)
+        assert isinstance(accuracy, dict)
+

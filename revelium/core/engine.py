@@ -154,8 +154,19 @@ class Revelium():
         return True
 
 
-    def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments) -> ClusterAccuracy:
-        return calculate_cluster_accuracy(true_labels, predicted_clusters)
+    def calculate_cluster_accuracy(self) -> ClusterAccuracy:
+        true_labels: dict[ItemId, str] = {}
+        assignments: Assignments = {}
+        for p in  self.stream_prompts():
+            assignments[p.prompt_id] = p.metadata.cluster_id
+            label = p.prompt_id.split("_")[0]
+            if not label: 
+                print(f"[WARNING] {p.prompt_id} is not a valid labelled item.")
+                continue
+            true_labels[p.prompt_id] = label
+
+
+        return calculate_cluster_accuracy(true_labels, assignments)
     
     def calculate_prompt_cost(self, prompt_content, price_per_1m_tokens: float, model:  TextEmbeddingModel) -> float:
         return embedding_token_cost(prompt_content, price_per_1m_tokens, model)
@@ -181,19 +192,24 @@ class Revelium():
             ):
             yield from zip(batch.ids, batch.embeddings)
 
-    def get_prompts_by_ids(self, ids: list[str]) -> list[Prompt]:
-        return list(self.stream_prompts_by_ids(ids))
+    def get_prompts(self, ids: Optional[List[str]], cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None) -> Iterable[Prompt]:
+        return list(self.stream_prompts(ids, cluster_id, limit))
     
-    def stream_prompts_by_ids(self, ids: list[str]) -> Iterable[Prompt]:
-        for batch in paginated_read(
+    def prompts_to_assignments(self, prompts: List[Prompt]) -> Assignments:
+        return {p.prompt_id : p.metadata.cluster_id for p in prompts}
+    
+    def stream_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None) -> Iterable[Prompt]:
+        limit = limit or 100
+        for batch in paginated_read_until_empty(
             lambda offset, limit: self.prompt_embedding_store.get(
                 ids = ids,
+                filter={"cluster_id": cluster_id} if cluster_id else None,
                 include=["metadatas", "documents"],
                 offset=offset,
                 limit=limit,
             ),
-            total=len(ids),
-            limit=500,
+            break_fn= lambda batch: len(batch.metadatas) == 0,
+            limit=limit,
             ):
             yield from [ Prompt(prompt_id=prompt_id, content=prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(batch.ids, batch.metadatas, batch.datas)]
 

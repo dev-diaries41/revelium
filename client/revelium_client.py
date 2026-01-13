@@ -1,7 +1,8 @@
 from typing import List, Optional
 import httpx
 
-from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT
+from smartscan import ClusterAccuracy
+from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT
 from revelium.prompts.types import Prompt, PromptsOverviewInfo
 from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams
 
@@ -110,3 +111,11 @@ class ReveliumClient:
             if res.status_code != 200:
                 raise Exception(f"Error getting labels: {res.text}")
             return res.json().get("labels", [])
+        
+    async def get_cluster_accuracy(self) -> ClusterAccuracy:
+        url = f"{self.base_url}{GET_CLUSTER_ACCURACY_ENDPOINT}"
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url)
+            if res.status_code != 200:
+                raise Exception(f"Error getting accuracy: {res.text}")
+            return res.json().get("accuracy")

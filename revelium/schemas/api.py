@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional, Literal, ClassVar
 
-from smartscan import Cluster, ClusterMetadata
+from smartscan import  ClusterMetadata, ClusterAccuracy
 
 from revelium.prompts.types import Prompt, PromptsOverviewInfo
 
@@ -87,6 +87,9 @@ class ClusterNoEmbeddings(BaseModel):
     
 class GetClustersResponse(BaseModel):
     clusters: List[ClusterNoEmbeddings]
+
+class GetClustersAccuracyResponse(BaseModel):
+    accuracy: ClusterAccuracy
 
 
 class UpdateLabelParams(BaseModel):
