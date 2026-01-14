@@ -14,22 +14,19 @@ from revelium.schemas.llm import LLMClassificationResult
 from revelium.providers.llm.llm_client import LLMClient
 from revelium.utils import  paginated_read, paginated_read_until_empty
 from revelium.tokens import embedding_token_cost
-from revelium.embeddings.helpers import get_embedding_store
 
 class Revelium():
     CLUSTER_TYPE = "cluster"
     PROMPT_TYPE = "prompt"
 
     def __init__(self, 
-        config: Optional[ReveliumConfig] = None,                 
+        cluster_embedding_store: EmbeddingStore,
+        prompt_embedding_store: EmbeddingStore,
         llm_client: Optional[LLMClient] = None,
-        cluster_embedding_store: Optional[EmbeddingStore] = None,
-        prompt_embedding_store: Optional[EmbeddingStore] = None,
-                 ):
-        self.config = config or ReveliumConfig()
+                 ): 
         self.llm = llm_client
-        self.cluster_embedding_store = cluster_embedding_store or get_embedding_store(self.config.chromadb_path, self.CLUSTER_TYPE, 'all-minilm-l6-v2', 512) 
-        self.prompt_embedding_store = prompt_embedding_store or get_embedding_store(self.config.chromadb_path, self.PROMPT_TYPE, 'all-minilm-l6-v2', 512) 
+        self.cluster_embedding_store = cluster_embedding_store 
+        self.prompt_embedding_store = prompt_embedding_store
         
 
     def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
