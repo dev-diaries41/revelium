@@ -4,7 +4,7 @@ from numpy import ndarray
 from datetime import datetime
 from typing import List, Dict, Optional, Iterable
 
-from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult, ItemEmbeddingUpdate, Include
+from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, ClusterMerges, ItemId, TextEmbeddingProvider, ClusterId, ClusterAccuracy, ClusterResult, ItemEmbeddingUpdate, Include, GetResult, QueryResult
 from smartscan.classify import  IncrementalClusterer, calculate_cluster_accuracy
 from smartscan.providers import  MiniLmTextEmbedder
 from smartscan.embeds import EmbeddingStore
@@ -154,8 +154,18 @@ class Revelium():
         return True
 
 
-    def calculate_cluster_accuracy(self, true_labels: Dict[ItemId, str],predicted_clusters: Assignments) -> ClusterAccuracy:
-        return calculate_cluster_accuracy(true_labels, predicted_clusters)
+    def calculate_cluster_accuracy(self) -> ClusterAccuracy:
+        true_labels: dict[ItemId, str] = {}
+        assignments: Assignments = {}
+        for p in  self.stream_all_prompts():
+            ## temp solution
+            assignments[p.prompt_id] = p.metadata.cluster_id
+            label = p.prompt_id.split("_")[0]
+            if not label: 
+                print(f"[WARNING] {p.prompt_id} is not a valid labelled item.")
+                continue
+            true_labels[p.prompt_id] = label
+        return calculate_cluster_accuracy(true_labels, assignments)
     
     def calculate_prompt_cost(self, prompt_content, price_per_1m_tokens: float, model:  TextEmbeddingModel) -> float:
         return embedding_token_cost(prompt_content, price_per_1m_tokens, model)
@@ -163,12 +173,12 @@ class Revelium():
     def get_all_prompt_embeddings(self) -> tuple[list[ItemId], list[ndarray]]:
         ids: list[ItemId] = []
         embeddings: list[ndarray] = []
-        for id_, emb in self.stream_prompt_embeddings():
+        for id_, emb in self.stream_all_prompt_embeddings():
             ids.append(id_)
             embeddings.append(emb)
         return ids, embeddings
     
-    def stream_prompt_embeddings(self) -> Iterable[tuple[ItemId, ndarray]]:
+    def stream_all_prompt_embeddings(self, batch_size: Optional[int] = None) -> Iterable[tuple[ItemId, ndarray]]:
         count = self.prompt_embedding_store.count()
         for batch in paginated_read(
             lambda offset, limit: self.prompt_embedding_store.get(
@@ -177,23 +187,41 @@ class Revelium():
                 limit=limit,
             ),
             total=count,
-            limit=500,
+            limit=batch_size or 500,
             ):
             yield from zip(batch.ids, batch.embeddings)
 
-    def get_prompts_by_ids(self, ids: list[str]) -> list[Prompt]:
-        return list(self.stream_prompts_by_ids(ids))
+    def get_all_prompts(self, ids: Optional[List[str]], cluster_id: Optional[ClusterId] = None, batch_size: Optional[int] = None) -> Iterable[Prompt]:
+        return list(self.stream_all_prompts(ids, cluster_id, batch_size))
     
-    def stream_prompts_by_ids(self, ids: list[str]) -> Iterable[Prompt]:
-        for batch in paginated_read(
+    def get_prompts_paginate(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
+        result = self.prompt_embedding_store.get(
+                ids = ids,
+                filter={"cluster_id": cluster_id} if cluster_id else None,
+                include=["metadatas", "documents"],
+                offset=offset,
+                limit=limit,
+            )
+        return self._to_prompts(result)
+
+    def query_prompts(self, query: str, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None) -> List[Prompt]:
+        embed = self.text_embedder.embed(query)
+        limit = limit or 10
+        result = self.prompt_embedding_store.query(query_embeds=[embed], limit=limit, filter={"cluster_id": cluster_id} if cluster_id else None, include=["metadatas", "documents"])
+        return self._to_prompts(result)
+    
+    def stream_all_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[ClusterId] = None, limit: Optional[int] = None) -> Iterable[Prompt]:
+        limit = limit or 100
+        for batch in paginated_read_until_empty(
             lambda offset, limit: self.prompt_embedding_store.get(
                 ids = ids,
+                filter={"cluster_id": cluster_id} if cluster_id else None,
                 include=["metadatas", "documents"],
                 offset=offset,
                 limit=limit,
             ),
-            total=len(ids),
-            limit=500,
+            break_fn= lambda batch: len(batch.metadatas) == 0,
+            limit=limit,
             ):
             yield from [ Prompt(prompt_id=prompt_id, content=prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(batch.ids, batch.metadatas, batch.datas)]
 
@@ -289,4 +317,7 @@ class Revelium():
     
     def _has_llm_client(self) -> bool:
         return self.llm != None
+    
+    def _to_prompts(self, result: GetResult | QueryResult) -> List[Prompt]:
+        return [ Prompt(prompt_id=prompt_id, content=prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(result.ids, result.metadatas, result.datas) ]
     

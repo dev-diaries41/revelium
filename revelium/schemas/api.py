@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional, Literal, ClassVar
 
-from smartscan import Cluster, ClusterMetadata
+from smartscan import  ClusterMetadata, ClusterAccuracy
 
 from revelium.prompts.types import Prompt, PromptsOverviewInfo
 
@@ -59,7 +59,15 @@ class AddPromptsResponse(JobReceipt):
     pass
  
 class GetPromptsRequest(BaseModel):
-    prompt_ids: List[str]
+    prompt_ids: Optional[List[str]] = None
+    cluster_id: Optional[str] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+
+class QueryPromptsRequest(BaseModel):
+    query:str
+    cluster_id: Optional[str] = None
+    limit: Optional[int] = None
 
 class GetPromptsResponse(PromptsPayload):
     pass
@@ -87,6 +95,9 @@ class ClusterNoEmbeddings(BaseModel):
     
 class GetClustersResponse(BaseModel):
     clusters: List[ClusterNoEmbeddings]
+
+class GetClustersAccuracyResponse(BaseModel):
+    accuracy: ClusterAccuracy
 
 
 class UpdateLabelParams(BaseModel):

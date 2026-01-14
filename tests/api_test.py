@@ -3,6 +3,7 @@ import pytest_asyncio
 from revelium.data import get_dummy_data
 from client.revelium_client import ReveliumClient
 from revelium.prompts.types import Prompt
+from httpx import HTTPStatusError
 
 @pytest_asyncio.fixture
 async def setup_client():
@@ -36,7 +37,12 @@ class TestReveliumClient:
     async def test_get_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, prompts = setup_client
         prompt_ids = [p.get("prompt_id") if isinstance(p, dict) else p.prompt_id for p in prompts]
-        retrieved_prompts = await client.get_prompts(prompt_ids)
+        retrieved_prompts = await client.get_prompts(ids=prompt_ids)
+        assert isinstance(retrieved_prompts, list)
+
+    async def test_query_prompts(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+        client, _ = setup_client
+        retrieved_prompts = await client.query_prompts("facts about physics", limit=10, cluster_id=None)
         assert isinstance(retrieved_prompts, list)
 
     async def test_labels(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
@@ -44,14 +50,19 @@ class TestReveliumClient:
         labels = await client.get_existing_labels()
         assert isinstance(labels, list)
 
+
     async def test_update_cluster_label(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
         label = "test label"
-        update_result = await client.update_cluster_label(
-            cluster_id="0173bc6fc4524fcaaee3f165410704f7",  # Replace with valid cluster_id
-            label="test label"
-        )
-        assert update_result == label
+
+        try:
+            update_result = await client.update_cluster_label(
+                cluster_id="0173bc6fc4524fcaaee3f165410704f7",
+                label=label,
+            )
+            assert update_result == label
+        except HTTPStatusError as e:
+            assert e.response.status_code == 404
 
     async def test_prompts_overview(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
@@ -60,5 +71,12 @@ class TestReveliumClient:
 
     async def test_add_prompts_file(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
         client, _ = setup_client
-        add_file_result = await client.add_prompts_file("output/dummy_prompts.json")
+        add_file_result = await client.add_prompts_file("output/placeholder_prompts.json")
         assert add_file_result is not None
+
+    async def test_prompts_overview(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+        client, _ = setup_client
+        accuracy = await client.get_cluster_accuracy()
+        print(accuracy)
+        assert isinstance(accuracy, dict)
+

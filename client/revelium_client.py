@@ -1,9 +1,10 @@
 from typing import List, Optional
 import httpx
 
-from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT
+from smartscan import ClusterAccuracy
+from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT, QUERY_PROMPTS_ENDPOINT
 from revelium.prompts.types import Prompt, PromptsOverviewInfo
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest
 
 class ReveliumClient:
     def __init__(self, base_url: str):
@@ -18,8 +19,7 @@ class ReveliumClient:
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
-            if res.status_code != 200:
-                raise Exception(f"Error adding prompts: {res.text}")
+            res.raise_for_status() 
             return res.json()
         
     
@@ -32,26 +32,33 @@ class ReveliumClient:
             with open(file_path, "rb") as f:
                 files = {"file": (file_path, f, "application/json")}
                 res = await client.post(url, files=files)
-            if res.status_code != 200:
-                raise Exception(f"Error adding prompts from file: {res.text}")
+            res.raise_for_status() 
             return res.json()
         
-    async def get_prompts(self, ids: List[str]) -> List[Prompt]:
+    async def get_prompts(self, ids: Optional[List[str]] = None, cluster_id: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Prompt]:
         url = f"{self.base_url}{BASE_PROMPTS_ENDPOINT}"
-        payload = GetPromptsRequest(prompt_ids=ids)
+        payload = GetPromptsRequest(prompt_ids=ids, cluster_id=cluster_id, limit=limit, offset=offset)
 
         async with httpx.AsyncClient() as client:
             res = await client.post(url, json=payload.model_dump())
-            if res.status_code != 200:
-                raise Exception(f"Error adding prompts: {res.text}")
+            res.raise_for_status() 
             return res.json().get('prompts', [])
+        
+    async def query_prompts(self, query: str, cluster_id: Optional[str] = None, limit: Optional[int] = None) -> List[Prompt]:
+        url = f"{self.base_url}{QUERY_PROMPTS_ENDPOINT}"
+        payload = QueryPromptsRequest(query=query, cluster_id=cluster_id, limit=limit)
+
+        async with httpx.AsyncClient() as client:
+            res = await client.post(url, json=payload.model_dump())
+            res.raise_for_status() 
+            return res.json().get('prompts', [])
+        
         
     async def get_prompts_overview(self) -> PromptsOverviewInfo:
         url = f"{self.base_url}{GET_PROMPTS_OVERVIEW_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
-            if res.status_code != 200:
-                raise Exception(f"Error getting ovrerview: {res.text}")
+            res.raise_for_status() 
             return res.json()
 
 
@@ -60,8 +67,7 @@ class ReveliumClient:
         url = f"{self.base_url}{START_CLUSTERING_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.post(url)
-            if res.status_code != 200:
-                raise Exception(f"Error clustering prompts: {res}")
+            res.raise_for_status() 
             return res.json()
         
 
@@ -71,8 +77,7 @@ class ReveliumClient:
 
         async with httpx.AsyncClient() as client:
             res = await client.get(url, params=params.model_dump())
-            if res.status_code != 200:
-                raise Exception(f"Error getting clusters: {res.text}")
+            res.raise_for_status() 
             return res.json().get("clusters", [])
    
 
@@ -82,16 +87,14 @@ class ReveliumClient:
 
         async with httpx.AsyncClient() as client:
             res = await client.patch(url, params=params.model_dump())
-            if res.status_code != 200:
-                raise Exception(f"Error updating label: {res.text}")
+            res.raise_for_status() 
             return res.json().get("updated_label")
         
     async def count_prompts(self) -> int:
         url = f"{self.base_url}{COUNT_PROMPTS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
-            if res.status_code != 200:
-                raise Exception(f"Error counting prompts: {res.text}")
+            res.raise_for_status() 
             return res.json().get("count", 0)
 
    
@@ -99,14 +102,19 @@ class ReveliumClient:
         url = f"{self.base_url}{COUNT_CLUSTERS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
-            if res.status_code != 200:
-                raise Exception(f"Error counting clusters: {res.text}")
+            res.raise_for_status() 
             return res.json().get("count", 0)
 
     async def get_existing_labels(self) -> list[str]:
         url = f"{self.base_url}{GET_CLUSTER_LABELS_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
-            if res.status_code != 200:
-                raise Exception(f"Error getting labels: {res.text}")
+            res.raise_for_status() 
             return res.json().get("labels", [])
+        
+    async def get_cluster_accuracy(self) -> ClusterAccuracy:
+        url = f"{self.base_url}{GET_CLUSTER_ACCURACY_ENDPOINT}"
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url)
+            res.raise_for_status() 
+            return res.json().get("accuracy")
