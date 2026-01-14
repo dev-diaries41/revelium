@@ -32,7 +32,6 @@ class Revelium():
         config: Optional[ReveliumConfig] = None,                 
         text_embedder: Optional[TextEmbeddingProvider] = None,
         llm_client: Optional[LLMClient] = None,
-        clusterer: Optional[IncrementalClusterer] = None,
         indexer_listener: Optional[ProcessorListener] = None,
         cluster_embedding_store: Optional[EmbeddingStore] = None,
         prompt_embedding_store: Optional[EmbeddingStore] = None,
@@ -41,7 +40,6 @@ class Revelium():
         self.model_manager = ModelManager() # must me initialised before textembedder
         self.text_embedder = text_embedder or self._get_text_embedder(self.config.text_embedder, self.config.provider_api_key)
         self.llm = llm_client
-        self.clusterer = clusterer or IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking, merge_threshold=0.85)  
         
         if not cluster_embedding_store or prompt_embedding_store:
             client = chromadb.PersistentClient(path=self.config.chromadb_path, settings=chromadb.Settings(anonymized_telemetry=False))
@@ -74,21 +72,7 @@ class Revelium():
         sample_prompts = [content for content in prompts.datas]
         input_prompt = self._get_labelling_prompt(cluster_id, existing_labels, sample_prompts)
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
-
-    def cluster_prompts(self) -> ClusterResult:
-        ids, embeddings, cluster_ids = self.get_all_prompt_embeddings()
-        existing_clusters = self.get_all_clusters()
-        existing_assignments: Assignments = dict(zip(ids, cluster_ids))
-        self.clusterer.assignments = existing_assignments
-        self.clusterer.clusters = existing_clusters # temp workaround, updated a clearner way
-        result = self.clusterer.cluster(ids, embeddings)
-
-        if result.clusters:
-            self.update_clusters(result.clusters, result.merges)
-
-        if result.assignments:
-            self.update_prompts(result.assignments, result.merges)
-        return result
+            
                
     def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
         prompt_ids = [str(k) for k in assignments.keys()]
