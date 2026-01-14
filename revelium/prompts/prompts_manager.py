@@ -6,7 +6,6 @@ from smartscan import ItemEmbedding, Cluster, ClusterMetadata, Assignments, Clus
 from smartscan.classify import  calculate_cluster_accuracy
 from smartscan.embeds import EmbeddingStore
 
-from revelium.schemas.revelium_config import ReveliumConfig
 from revelium.schemas.api import ClusterNoEmbeddings
 from revelium.prompts.types import Prompt, PromptMetadata, PromptsOverviewInfo
 from revelium.providers.types import TextEmbeddingModel

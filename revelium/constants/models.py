@@ -1,9 +1,15 @@
 import os
+
 from typing import Dict
 from revelium.providers.types import LocalTextEmbeddingModel, ModelInfo
-from pathlib import Path
+from dotenv import load_dotenv
 
-BASE_DIR = Path.home() / ".cache" / "revelium"
+load_dotenv()
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+DEFAULT_OPENAI_MODEL = "gpt-5-mini"
+DEFAULT_TEXT_EMBEDDER = "all-minilm-l6-v2"
+DEFAULT_SYSTEM_PROMPT = "Your objective is to label prompt messages from clusters and label them, returning ClassificationResult. Labels should be one word max 3 words."
 
 # Local models
 MINILM_MAX_TOKENS = 512
