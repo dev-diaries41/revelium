@@ -12,7 +12,7 @@ from dataclasses import asdict
 from smartscan.processor.metrics import MetricsSuccess
 
 from revelium.prompts.types import Prompt
-from revelium.core.engine import Revelium, ReveliumConfig
+from revelium.prompts.prompts_manager import PromptsManager, ReveliumConfig
 from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse, UpdateLabelResponse, GetClustersAccuracyResponse, QueryPromptsRequest
 from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT, QUERY_PROMPTS_ENDPOINT
 from revelium.constants.llms import OPENAI_API_KEY
@@ -30,10 +30,10 @@ MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 model_manager = ModelManager()
 text_embedder = model_manager.get_text_embedder('all-minilm-l6-v2')
 text_embedder.init()
-prompt_embedding_store =  get_embedding_store(ReveliumConfig.DEFAULT_CHROMADB_PATH, Revelium.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
-cluster_embedding_store =  get_embedding_store(ReveliumConfig.DEFAULT_CHROMADB_PATH, Revelium.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+prompt_embedding_store =  get_embedding_store(ReveliumConfig.DEFAULT_CHROMADB_PATH, PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+cluster_embedding_store =  get_embedding_store(ReveliumConfig.DEFAULT_CHROMADB_PATH, PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
 indexer =  PromptIndexer(text_embedder, listener=None, embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
-revelium = Revelium(prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
+revelium = PromptsManager(prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
 
 app = FastAPI()
 app.add_middleware(

@@ -1,9 +1,9 @@
 from smartscan.classify import IncrementalClusterer
-from revelium.core.engine import Revelium
+from revelium.prompts.prompts_manager import PromptsManager
 
-def cluster_prompts(revelium: Revelium):
-    ids, embeddings, cluster_ids = revelium.get_all_prompt_embeddings()
-    existing_clusters = revelium.get_all_clusters()
+def cluster_prompts(prompts_manager: PromptsManager):
+    ids, embeddings, cluster_ids = prompts_manager.get_all_prompt_embeddings()
+    existing_clusters = prompts_manager.get_all_clusters()
     existing_assignments = dict(zip(ids, cluster_ids))
     clusterer = IncrementalClusterer(
         default_threshold=0.55,

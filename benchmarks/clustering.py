@@ -9,7 +9,7 @@ from dataclasses import asdict
 from smartscan import ClusterResult
 from smartscan.classify import IncrementalClusterer
 from revelium.utils import with_time, get_new_filename
-from revelium.core.engine import Revelium
+from revelium.prompts.prompts_manager import PromptsManager
 from revelium.plot import plot_clusters
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
 from revelium.embeddings.helpers import get_embedding_store
@@ -28,7 +28,7 @@ def cluster(clusterer: IncrementalClusterer, ids, embeddings) -> tuple[ClusterRe
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
-def run(revelium: Revelium, model:TextEmbeddingModel, plot_output: str):
+def run(prompts_manager: PromptsManager, model:TextEmbeddingModel, plot_output: str):
     results = {}
     ## NOTE: IncrementalClusterer uses random numbers internally. Running multiple models sequentially 
     # without reseeding causes non-deterministic clustering and lower accuracy. Reseed Python and 
@@ -36,23 +36,23 @@ def run(revelium: Revelium, model:TextEmbeddingModel, plot_output: str):
 
     random.seed(32)
 
-    ids, embeddings, cluster_ids = revelium.get_all_prompt_embeddings()
-    existing_clusters = revelium.get_all_clusters()
+    ids, embeddings, cluster_ids = prompts_manager.get_all_prompt_embeddings()
+    existing_clusters = prompts_manager.get_all_clusters()
     existing_assignments = dict(zip(ids, cluster_ids))
     clusterer = IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, merge_threshold=0.9, existing_assignments=existing_assignments, existing_clusters=existing_clusters, benchmarking=True)  
     result,time = cluster(clusterer, ids, embeddings)
     if ids and embeddings:
         # Plot to visualise prompt clusters
         plot_clusters(ids, embeddings, result.assignments, output_path=plot_output)
-    acc_info = revelium.calculate_cluster_accuracy()
+    acc_info = prompts_manager.calculate_cluster_accuracy()
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[model] = bench
  
     if result.clusters:
-        revelium.update_clusters(result.clusters, result.merges)
+        prompts_manager.update_clusters(result.clusters, result.merges)
 
     if result.assignments:
-        revelium.update_prompts(result.assignments, result.merges)
+        prompts_manager.update_prompts(result.assignments, result.merges)
     print(results)
 
     with open(BENCHMARK_OUTPUT_PATH, "a") as f:
@@ -64,10 +64,10 @@ def run(revelium: Revelium, model:TextEmbeddingModel, plot_output: str):
 
 
 def main():
-    prompt_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, Revelium.PROMPT_TYPE, 'all-minilm-l6-v2', 384) 
-    cluster_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, Revelium.CLUSTER_TYPE, 'all-minilm-l6-v2', 384) 
-    revelium = Revelium(prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
+    prompt_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', 384) 
+    cluster_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', 384) 
+    prompts_manager = PromptsManager(prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
     plot_output = get_new_filename(BENCHMARK_PLOTS_DIR, BENCHMARK_CLUSTERS_PLOT, ".png")
-    run(revelium, 'all-minilm-l6-v2', plot_output)
+    run(prompts_manager, 'all-minilm-l6-v2', plot_output)
 
 main()

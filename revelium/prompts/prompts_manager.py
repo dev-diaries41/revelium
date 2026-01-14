@@ -15,7 +15,7 @@ from revelium.providers.llm.llm_client import LLMClient
 from revelium.utils import  paginated_read, paginated_read_until_empty
 from revelium.tokens import embedding_token_cost
 
-class Revelium():
+class PromptsManager():
     CLUSTER_TYPE = "cluster"
     PROMPT_TYPE = "prompt"
 

@@ -11,7 +11,7 @@ from revelium.prompts.types import Prompt
 from revelium.prompts.indexer import PromptIndexer
 from revelium.prompts.indexer_listener import ProgressBarIndexerListener
 from revelium.data import get_dummy_data, get_placeholder_prompts
-from revelium.core.engine import Revelium
+from revelium.prompts.prompts_manager import PromptsManager
 from revelium.models.manage import ModelManager
 from revelium.embeddings.helpers import get_embedding_store
 from benchmarks.constants import BENCHMARK_CHROMADB_PATH, BENCHMARK_DIR
@@ -25,7 +25,7 @@ os.makedirs(BENCHMARK_DIR, exist_ok=True)
 async def main(labelled_prompts: list[Prompt]):
     text_embedder = ModelManager().get_text_embedder('all-minilm-l6-v2')
     text_embedder.init()
-    prompt_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, Revelium.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+    prompt_embedding_store =  get_embedding_store(BENCHMARK_CHROMADB_PATH, PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
     indexer =  PromptIndexer(text_embedder, listener=ProgressBarIndexerListener(), embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
     result =  await indexer.run(labelled_prompts)
     result_dict = {k: v for k, v in asdict(result).items() if k != "error"}
