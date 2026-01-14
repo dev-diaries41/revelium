@@ -80,8 +80,12 @@ class Revelium():
         existing_clusters = self.get_all_clusters()
         self.clusterer.clusters = existing_clusters # temp workaround, updated a clearner way
         result =  self.clusterer.cluster(ids, embeddings)
-        self.update_clusters(result.clusters, result.merges)
-        self.update_prompts(result.assignments, result.merges)
+
+        if result.clusters:
+            self.update_clusters(result.clusters, result.merges)
+
+        if result.assignments:
+            self.update_prompts(result.assignments, result.merges)
         return result
                
     def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
