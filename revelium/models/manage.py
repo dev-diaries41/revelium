@@ -1,10 +1,18 @@
 import shutil
 import tempfile
 import urllib.request
+from typing import Optional
 from pathlib import Path
+
+from smartscan import TextEmbeddingProvider
+from smartscan.providers import  MiniLmTextEmbedder
+
 from revelium.providers.types import LocalTextEmbeddingModel
 from revelium.constants import BASE_DIR
 from revelium.constants.models import MODEL_REGISTRY
+from revelium.providers.types import TextEmbeddingModel
+from revelium.providers.embeddings.openai import OpenAITextEmbedder
+from revelium.constants.models import MINILM_MAX_TOKENS
 
 
 class ModelManager:
@@ -73,3 +81,17 @@ class ModelManager:
 
     def get_model_download_url(self, name: LocalTextEmbeddingModel) -> str:
         return MODEL_REGISTRY[name]['url']
+
+
+    def get_text_embedder(self,model: TextEmbeddingModel, provider_api_key: Optional[str] = None) -> TextEmbeddingProvider:
+        if model == ("text-embedding-3-large" or "text-embedding-3-small"):
+            if provider_api_key is None:
+                raise ValueError("Missing OpenAI API key")
+            return OpenAITextEmbedder(provider_api_key, model=model)
+        else:
+            if not self.model_exists(model):
+                print(f"{model} doesn't exsiting. Downloading model now...")
+                path = self.download_model(model)
+                return MiniLmTextEmbedder(path, MINILM_MAX_TOKENS)
+            path = self.get_model_path(model)
+            return MiniLmTextEmbedder(path, MINILM_MAX_TOKENS)

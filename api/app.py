@@ -17,14 +17,23 @@ from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPrompt
 from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT, QUERY_PROMPTS_ENDPOINT
 from revelium.constants.llms import OPENAI_API_KEY
 from revelium.prompts.cluster import cluster_prompts
+from revelium.models.manage import ModelManager
+from revelium.embeddings.helpers import get_embedding_store
+from revelium.prompts.indexer import PromptIndexer
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
-revelium = Revelium(config=ReveliumConfig(provider_api_key=OPENAI_API_KEY))
-revelium.text_embedder.init()
+model_manager = ModelManager()
+text_embedder = model_manager.get_text_embedder('all-minilm-l6-v2')
+text_embedder.init()
+prompt_embedding_store =  get_embedding_store(ReveliumConfig.DEFAULT_CHROMADB_PATH, Revelium.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+cluster_embedding_store =  get_embedding_store(ReveliumConfig.DEFAULT_CHROMADB_PATH, Revelium.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
+indexer =  PromptIndexer(text_embedder, listener=None, embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
+revelium = Revelium(config=ReveliumConfig(provider_api_key=OPENAI_API_KEY), prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
 
 app = FastAPI()
 app.add_middleware(
@@ -57,7 +66,7 @@ async def add_prompts(req: AddPromptsRequest):
     if not req.prompts:
         raise HTTPException(status_code=400, detail="Missing prompts")
     # TODO: Add job to queue and return JobReceipt
-    result = await revelium.index_prompts(req.prompts)
+    result = await indexer.run(req.prompts)
     if hasattr(result, "error" ):
         raise result.error
     result_dict: MetricsSuccess = {k: v for k, v in asdict(result).items() if k != "error"}
@@ -79,7 +88,7 @@ async def add_prompts_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Missing prompts in file")
 
     # TODO: Add job to queue and return JobReceipt
-    result = await revelium.index_prompts(prompts)
+    result = await indexer.run(prompts)
     if hasattr(result, "error"):
         raise result.error
 
@@ -98,7 +107,7 @@ async def get_prompts(req: GetPromptsRequest):
 
 @app.post(QUERY_PROMPTS_ENDPOINT)
 async def query_prompts(req: QueryPromptsRequest):
-    prompts = await run_in_threadpool(revelium.query_prompts, req.query, req.cluster_id, req.limit)
+    prompts = await run_in_threadpool(revelium.query_prompts, text_embedder, req.query, req.cluster_id, req.limit)
     return JSONResponse(GetPromptsResponse(prompts=prompts).model_dump())
 
 

@@ -2,6 +2,7 @@ from typing import Iterator, Callable, TypeVar
 import tracemalloc
 import time
 import os 
+from revelium.providers.types import TextEmbeddingModel
 
 T = TypeVar("T")
 
