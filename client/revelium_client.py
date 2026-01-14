@@ -2,7 +2,7 @@ from typing import List, Optional
 import httpx
 
 from smartscan import ClusterAccuracy
-from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT, QUERY_PROMPTS_ENDPOINT
+from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT, QUERY_PROMPTS_ENDPOINT, GET_CLUSTER_PLOT_ENDPOINT
 from revelium.prompts.types import Prompt, PromptsOverviewInfo
 from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest
 
@@ -118,3 +118,15 @@ class ReveliumClient:
             res = await client.get(url)
             res.raise_for_status() 
             return res.json().get("accuracy")
+        
+    async def get_cluster_plot(self, method: str = "tsne") -> bytes:
+        """
+        Fetches the cluster plot image as PNG bytes.
+        """
+        url = f"{self.base_url}{GET_CLUSTER_PLOT_ENDPOINT}"
+        params = {"method": method}
+
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url, params=params)
+            res.raise_for_status()
+            return res.content 

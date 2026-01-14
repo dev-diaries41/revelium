@@ -1,6 +1,6 @@
 import json 
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
@@ -15,10 +15,10 @@ from revelium.schemas.llm import LLMClientConfig
 from revelium.prompts.types import Prompt
 from revelium.prompts.prompts_manager import PromptsManager
 from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse, UpdateLabelResponse, GetClustersAccuracyResponse, QueryPromptsRequest
-from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT, QUERY_PROMPTS_ENDPOINT
+from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT, QUERY_PROMPTS_ENDPOINT, GET_CLUSTER_PLOT_ENDPOINT
 from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from revelium.constants import DEFAULT_CHROMADB_PATH
-from revelium.prompts.cluster import cluster_prompts
+from revelium.prompts.cluster import cluster_prompts, get_cluster_plot
 from revelium.models.manage import ModelManager
 from revelium.embeddings.helpers import get_embedding_store
 from revelium.prompts.indexer import PromptIndexer
@@ -165,4 +165,12 @@ async def get_existing_labels():
 async def get_cluster_accuracy():
     accuracy = await run_in_threadpool(prompts_manager.calculate_cluster_accuracy)
     return JSONResponse(GetClustersAccuracyResponse(accuracy=accuracy).model_dump())
+
+
+@app.get(GET_CLUSTER_PLOT_ENDPOINT)
+async def get_clusters_plot():
+    img_bytes = await run_in_threadpool(get_cluster_plot, prompts_manager)
+    return Response(content=img_bytes, media_type="image/png")
+
+
 
