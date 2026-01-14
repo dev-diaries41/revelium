@@ -33,7 +33,7 @@ text_embedder.init()
 prompt_embedding_store =  get_embedding_store(ReveliumConfig.DEFAULT_CHROMADB_PATH, Revelium.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
 cluster_embedding_store =  get_embedding_store(ReveliumConfig.DEFAULT_CHROMADB_PATH, Revelium.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
 indexer =  PromptIndexer(text_embedder, listener=None, embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
-revelium = Revelium(config=ReveliumConfig(provider_api_key=OPENAI_API_KEY), prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
+revelium = Revelium(prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
 
 app = FastAPI()
 app.add_middleware(
