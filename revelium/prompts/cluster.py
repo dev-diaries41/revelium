@@ -8,8 +8,13 @@ def cluster_prompts(prompts_manager: PromptsManager):
     clusterer = IncrementalClusterer(
         default_threshold=0.55,
         sim_factor=0.9,
-        merge_threshold=0.85,
+        merge_threshold=0.9,
         existing_assignments=existing_assignments,
         existing_clusters=existing_clusters,
     )
-    return clusterer.cluster(ids, embeddings)
+    result = clusterer.cluster(ids, embeddings)
+    if result.clusters:
+        prompts_manager.update_clusters(result.clusters, result.merges)
+    if result.assignments:
+        prompts_manager.update_prompts(result.assignments, result.merges)
+    return result
