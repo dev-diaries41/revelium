@@ -41,7 +41,7 @@ class Revelium():
         self.model_manager = ModelManager() # must me initialised before textembedder
         self.text_embedder = text_embedder or self._get_text_embedder(self.config.text_embedder, self.config.provider_api_key)
         self.llm = llm_client
-        self.clusterer = clusterer or IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking)  
+        self.clusterer = clusterer or IncrementalClusterer(default_threshold=0.55, sim_factor=0.9, benchmarking=config.benchmarking, merge_threshold=0.85)  
         
         if not cluster_embedding_store or prompt_embedding_store:
             client = chromadb.PersistentClient(path=self.config.chromadb_path, settings=chromadb.Settings(anonymized_telemetry=False))
@@ -76,10 +76,12 @@ class Revelium():
         return self.llm.generate_json(input_prompt, LLMClassificationResult)
 
     def cluster_prompts(self) -> ClusterResult:
-        ids, embeddings = self.get_all_prompt_embeddings()
+        ids, embeddings, cluster_ids = self.get_all_prompt_embeddings()
         existing_clusters = self.get_all_clusters()
+        existing_assignments: Assignments = dict(zip(ids, cluster_ids))
+        self.clusterer.assignments = existing_assignments
         self.clusterer.clusters = existing_clusters # temp workaround, updated a clearner way
-        result =  self.clusterer.cluster(ids, embeddings)
+        result = self.clusterer.cluster(ids, embeddings)
 
         if result.clusters:
             self.update_clusters(result.clusters, result.merges)
@@ -158,6 +160,8 @@ class Revelium():
         return True
 
 
+    # TODO: accept prompt_ids that are lablled and fetch label from meta
+    #args: ids and label
     def calculate_cluster_accuracy(self) -> ClusterAccuracy:
         true_labels: dict[ItemId, str] = {}
         assignments: Assignments = {}
@@ -174,26 +178,26 @@ class Revelium():
     def calculate_prompt_cost(self, prompt_content, price_per_1m_tokens: float, model:  TextEmbeddingModel) -> float:
         return embedding_token_cost(prompt_content, price_per_1m_tokens, model)
 
-    def get_all_prompt_embeddings(self) -> tuple[list[ItemId], list[ndarray]]:
-        ids: list[ItemId] = []
-        embeddings: list[ndarray] = []
-        for id_, emb in self.stream_all_prompt_embeddings():
+    def get_all_prompt_embeddings(self) -> tuple[List[ItemId], List[ndarray], List[ClusterId]]:
+        ids, embeddings, cluster_ids = [], [], []
+        for id_, emb, cluster_id in self.stream_all_prompt_embeddings():
             ids.append(id_)
             embeddings.append(emb)
-        return ids, embeddings
+            cluster_ids.append(cluster_id)
+        return ids, embeddings, cluster_ids
     
-    def stream_all_prompt_embeddings(self, batch_size: Optional[int] = None) -> Iterable[tuple[ItemId, ndarray]]:
+    def stream_all_prompt_embeddings(self, batch_size: Optional[int] = None) -> Iterable[tuple[ItemId, ndarray, ClusterId]]:
         count = self.prompt_embedding_store.count()
         for batch in paginated_read(
             lambda offset, limit: self.prompt_embedding_store.get(
-                include=["embeddings"],
+                include=["embeddings", "metadatas"],
                 offset=offset,
                 limit=limit,
             ),
             total=count,
             limit=batch_size or 500,
             ):
-            yield from zip(batch.ids, batch.embeddings)
+            yield from zip(batch.ids, batch.embeddings, [m.get("cluster_id") for m in batch.metadatas])
 
     def get_all_prompts(self, ids: Optional[List[str]], cluster_id: Optional[ClusterId] = None, batch_size: Optional[int] = None) -> Iterable[Prompt]:
         return list(self.stream_all_prompts(ids, cluster_id, batch_size))
@@ -227,8 +231,8 @@ class Revelium():
             break_fn= lambda batch: len(batch.metadatas) == 0,
             limit=limit,
             ):
-            yield from [ Prompt(prompt_id=prompt_id, content=prompt_content,  metadata=PromptMetadata(**metadata)) for prompt_id, metadata, prompt_content in zip(batch.ids, batch.metadatas, batch.datas)]
-
+            yield from self._to_prompts(batch)
+            
     def get_prompts_metadata(self, ids: list[str]) -> list[PromptMetadata]:
         return list(self.stream_prompts_metadata(ids))
     

@@ -20,11 +20,9 @@ BENCHMARK_CLUSTERS_PLOT =  "prompt_clusters"
 
 os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
-
 @with_time
 def cluster(revelium: Revelium) -> tuple[ClusterResult, float]:
     return revelium.cluster_prompts()
-
 
 # `prompt_id` must be prefixed with label e.g promptlabel_123
 # this is only for benchmarking
@@ -37,24 +35,14 @@ def run(revelium: Revelium, plot_output: str):
 
     random.seed(32)
 
-    # Ensure collection name is unique per model/dim
     result, time = cluster(revelium)
-    # for c in result.clusters.values():
-    #     print(c.metadata)
 
     # Plot to visualise prompt clusters
-    ids, embeddings = revelium.get_all_prompt_embeddings()
-    plot_clusters(ids, embeddings, result.assignments, output_path=plot_output)
+    ids, embeddings, _ = revelium.get_all_prompt_embeddings()
+    if ids and embeddings:
+        plot_clusters(ids, embeddings, result.assignments, output_path=plot_output)
 
-    true_labels: dict[ItemId, str] = {}
-    for prompt_id in result.assignments.keys():
-        label = prompt_id.split("_")[0]
-        if not label: 
-            print(f"[WARNING] {prompt_id} is not a valid labelled item.")
-            continue
-        true_labels[prompt_id] = label
-
-    acc_info = revelium.calculate_cluster_accuracy(true_labels, result.assignments)
+    acc_info = revelium.calculate_cluster_accuracy()
     bench = {"accuracy": asdict(acc_info), "clustering_speed": time}
     results[revelium.config.text_embedder] = bench
     print(results)
