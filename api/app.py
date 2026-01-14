@@ -16,7 +16,7 @@ from revelium.core.engine import Revelium, ReveliumConfig
 from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse, UpdateLabelResponse, GetClustersAccuracyResponse, QueryPromptsRequest
 from revelium.constants.api import ADD_PROMPTS_ENDPOINT, ADD_PROMPTS_FILE_ENDPOINT, BASE_PROMPTS_ENDPOINT, GET_PROMPTS_OVERVIEW_ENDPOINT, GET_CLUSTER_LABELS_ENDPOINT, COUNT_CLUSTERS_ENDPOINT, COUNT_PROMPTS_ENDPOINT, BASE_CLUSTER_ENDPOINT, START_CLUSTERING_ENDPOINT, GET_CLUSTER_ACCURACY_ENDPOINT, QUERY_PROMPTS_ENDPOINT
 from revelium.constants.llms import OPENAI_API_KEY
-
+from revelium.prompts.cluster import cluster_prompts
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -115,8 +115,8 @@ async def get_prompts_overview():
 
 
 @app.post(START_CLUSTERING_ENDPOINT)
-async def cluster_prompts():
-    _ = await run_in_threadpool(revelium.cluster_prompts)
+async def start_clustering_prompts():
+    _ = await run_in_threadpool(cluster_prompts, revelium)
     return JSONResponse({"status": "in_progress"}) # testing only
 
 @app.get(BASE_CLUSTER_ENDPOINT)
