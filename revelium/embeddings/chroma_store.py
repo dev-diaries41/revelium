@@ -57,7 +57,12 @@ class ChromaDBEmbeddingStore(EmbeddingStore[str, chromadb.CollectionMetadata]):
     
     def query(self, query_embeds, filter = None, limit = 10, include = ["metadatas", "embeddings"]) -> QueryResult[str, chromadb.CollectionMetadata]:
         result = self.chroma_colletion.query(query_embeddings=query_embeds, where=filter, include=include, n_results=limit)
-        return QueryResult(ids=result["ids"], embeddings=result['embeddings'], metadatas=result['metadatas'], sims=result['distances'], datas=result['documents'])
-    
+        return QueryResult(
+            ids=result["ids"][0] if result.get("ids") else [],
+            embeddings=result["embeddings"][0] if result.get("embeddings") else None,
+            metadatas=result["metadatas"][0] if result.get("metadatas") else [],
+            datas=result["documents"][0] if result.get("documents") else [],
+            sims=result["distances"][0] if result.get("distances") else None,
+        )    
     def count(self, filter = None):
         return self.chroma_colletion.count()      
