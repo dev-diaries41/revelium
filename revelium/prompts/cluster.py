@@ -1,6 +1,7 @@
 from smartscan.classify import IncrementalClusterer
 from revelium.prompts.prompts_manager import PromptsManager
 from revelium.plot import plot_clusters_bytes
+from typing import Optional
 
 def cluster_prompts(prompts_manager: PromptsManager):
     ids, embeddings, cluster_ids = prompts_manager.get_all_prompt_embeddings()
@@ -20,7 +21,9 @@ def cluster_prompts(prompts_manager: PromptsManager):
         prompts_manager.update_prompts(result.assignments, result.merges)
     return result
 
-def get_cluster_plot(prompts_manager: PromptsManager):
+def get_cluster_plot(prompts_manager: PromptsManager) -> Optional[bytes]:
     ids, embeddings, cluster_ids = prompts_manager.get_all_prompt_embeddings()
+    if not ids:
+        return None
     existing_assignments = dict(zip(ids, cluster_ids))
     return plot_clusters_bytes(ids, embeddings, existing_assignments)

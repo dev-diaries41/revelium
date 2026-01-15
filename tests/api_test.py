@@ -91,3 +91,12 @@ class TestReveliumClient:
         except HTTPStatusError as e:
             assert e.response.status_code == 404
 
+    async def test_get_cluster_plot(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+        client, _ = setup_client
+        count = await client.count_clusters()
+        img_bytes = await client.get_cluster_plot()
+
+        if count == 0:
+            assert img_bytes == None
+        else:
+            assert isinstance(img_bytes, bytes)

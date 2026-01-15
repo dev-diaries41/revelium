@@ -23,6 +23,7 @@ from revelium.prompts.cluster import cluster_prompts, get_cluster_plot
 from revelium.models.manage import ModelManager
 from revelium.embeddings.helpers import get_embedding_store
 from revelium.prompts.indexer import PromptIndexer
+from revelium.prompts.indexer_listener import PromptIndexListener
 from revelium.providers.llm.openai import OpenAIClient
 from dotenv import load_dotenv
 
@@ -35,9 +36,10 @@ text_embedder = model_manager.get_text_embedder('all-minilm-l6-v2')
 text_embedder.init()
 prompt_embedding_store =  get_embedding_store(DEFAULT_CHROMADB_PATH, PromptsManager.PROMPT_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
 cluster_embedding_store =  get_embedding_store(DEFAULT_CHROMADB_PATH, PromptsManager.CLUSTER_TYPE, 'all-minilm-l6-v2', text_embedder.embedding_dim) 
-indexer =  PromptIndexer(text_embedder, listener=None, embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
 llm = OpenAIClient(OPENAI_API_KEY, LLMClientConfig(model_name=DEFAULT_OPENAI_MODEL, system_prompt=DEFAULT_SYSTEM_PROMPT))
 prompts_manager = PromptsManager(llm_client=llm, prompt_embedding_store=prompt_embedding_store, cluster_embedding_store=cluster_embedding_store)
+indexer =  PromptIndexer(text_embedder, listener=PromptIndexListener(prompts_manager =prompts_manager), embeddings_store=prompt_embedding_store, batch_size=100, max_concurrency=4)
+
 
 app = FastAPI()
 app.add_middleware(
@@ -185,4 +187,4 @@ async def get_cluster_accuracy():
 @app.get(Routes.GET_CLUSTER_PLOT_ENDPOINT)
 async def get_clusters_plot():
     img_bytes = await run_in_threadpool(get_cluster_plot, prompts_manager)
-    return Response(content=img_bytes, media_type="image/png")
+    return Response(status_code=200 if img_bytes else 204, content=img_bytes, media_type="image/png")
