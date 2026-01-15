@@ -17,15 +17,15 @@ def generate_synthetic_prompt_data(llm: LLMClient, label: str, topic: str, n:int
     return strings_to_prompts(result.prompts, label)
 
 ## DEV ONLY placeholders for getting data to cluster
-def strings_to_prompts(arr: list[str], label_prefix: str) -> list[Prompt]:
-    return [Prompt(prompt_id=f"{label_prefix}_{idx}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
+def strings_to_prompts(arr: list[str], label_prefix: str, offset: int = 0) -> list[Prompt]:
+    return [Prompt(prompt_id=f"{label_prefix}_{idx + offset}", content=prompt_content) for idx, prompt_content in enumerate(arr)]
 
-def get_placeholder_prompts() -> list[Prompt]:
+def get_placeholder_prompts(offset=0) -> list[Prompt]:
     all_data: list[Prompt] = []
-    all_data.extend(strings_to_prompts(long_physics_sentences, "physics"))
-    all_data.extend(strings_to_prompts(quantum_mechanics_sentences, "quantum"))
-    all_data.extend(strings_to_prompts(long_btc_analysis, "btc"))
-    all_data.extend(strings_to_prompts(long_forex_analysis, "forex"))
+    all_data.extend(strings_to_prompts(long_physics_sentences, "physics", offset))
+    all_data.extend(strings_to_prompts(quantum_mechanics_sentences, "quantum", offset))
+    all_data.extend(strings_to_prompts(long_btc_analysis, "btc", offset))
+    all_data.extend(strings_to_prompts(long_forex_analysis, "forex", offset))
     return all_data
 
 def get_dummy_data(n: int = 100, offset = 0) -> list[Prompt]:
