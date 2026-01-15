@@ -107,3 +107,10 @@ class UpdateLabelParams(BaseModel):
 class UpdateLabelResponse(BaseModel):
     updated_label: str
 
+class UpdatePromptClusterIdResponse(BaseModel):
+    updated_cluster_id: str
+
+class UpdatePromptClusterIdParams(BaseModel):
+    prompt_id: str
+    cluster_id: str
+    

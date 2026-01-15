@@ -14,7 +14,7 @@ from smartscan.processor.metrics import MetricsSuccess
 from revelium.schemas.llm import LLMClientConfig
 from revelium.prompts.types import Prompt
 from revelium.prompts.prompts_manager import PromptsManager
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse, UpdateLabelResponse, GetClustersAccuracyResponse, QueryPromptsRequest
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetPromptsResponse, GetCountResponse, GetLabelsResponse, GetClustersResponse, GetPromptsOverviewResponse, UpdateLabelResponse, GetClustersAccuracyResponse, QueryPromptsRequest, UpdatePromptClusterIdResponse
 from revelium.constants.api import Routes
 from revelium.constants.models import OPENAI_API_KEY, DEFAULT_SYSTEM_PROMPT, DEFAULT_OPENAI_MODEL
 from revelium.constants import DEFAULT_CHROMADB_PATH
@@ -124,6 +124,14 @@ async def count_prompts():
 async def get_prompts_overview():
     overview = await run_in_threadpool( prompts_manager.get_prompts_overview)
     return JSONResponse(GetPromptsOverviewResponse(**overview.model_dump()).model_dump())
+
+
+@app.patch(Routes.BASE_PROMPTS_ENDPOINT)
+async def update_prompt_cluster(prompt_id: str, cluster_id: str):
+    await run_in_threadpool( prompts_manager.update_prompts , {prompt_id : cluster_id}, {})
+    return JSONResponse(UpdatePromptClusterIdResponse(updated_cluster_id=cluster_id).model_dump())
+
+
 
 
 @app.post(Routes.START_CLUSTERING_ENDPOINT)

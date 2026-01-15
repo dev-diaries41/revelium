@@ -4,7 +4,7 @@ import httpx
 from smartscan import ClusterAccuracy
 from revelium.constants.api import Routes
 from revelium.prompts.types import Prompt, PromptsOverviewInfo
-from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest
+from revelium.schemas.api import AddPromptsRequest, GetPromptsRequest, GetClusterRequestParams, ClusterNoEmbeddings, UpdateLabelParams, QueryPromptsRequest, UpdatePromptClusterIdParams
 
 class ReveliumClient:
     def __init__(self, base_url: str):
@@ -58,6 +58,14 @@ class ReveliumClient:
         url = f"{self.base_url}{Routes.GET_PROMPTS_OVERVIEW_ENDPOINT}"
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
+            res.raise_for_status() 
+            return res.json()
+
+    async def update_prompt_cluster_id(self, prompt_id: str, cluster_id: str) -> str:
+        url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
+        payload = UpdatePromptClusterIdParams(prompt_id=prompt_id, cluster_id=cluster_id)
+        async with httpx.AsyncClient() as client:
+            res = await client.patch(url, params=payload)
             res.raise_for_status() 
             return res.json()
 
