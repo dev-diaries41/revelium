@@ -80,3 +80,14 @@ class TestReveliumClient:
         print(accuracy)
         assert isinstance(accuracy, dict)
 
+
+    async def test_updated_prompt_cluster(self, setup_client: tuple[ReveliumClient, list[Prompt]]):
+        client, _ = setup_client
+        try:
+            test_prompt_id = "test_prompt_id"
+            test_cluster_id = "test_cluster_id"
+            new_id = await client.update_prompt_cluster_id(test_prompt_id, test_cluster_id)
+            assert new_id == test_cluster_id
+        except HTTPStatusError as e:
+            assert e.response.status_code == 404
+
