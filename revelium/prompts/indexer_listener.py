@@ -32,6 +32,13 @@ class ProgressBarIndexerListener(ProcessorListener[Prompt, ItemEmbedding]):
         print(f"Results: {result.total_processed} | Time elapsed: {result.time_elapsed:.4f}s")
 
 
+class PromptIndexListener(ProcessorListener[Prompt, ItemEmbedding]):
+    def __init__(self, prompts_manager: PromptsManager):
+        self.prompts_manager = prompts_manager
+
+    async def on_complete(self, result):
+        cluster_prompts(self.prompts_manager)
+    
 class PromptIndexListenerWithProgressBar(ProgressBarIndexerListener):
     def __init__(self, prompts_manager: PromptsManager):
         super().__init__()
