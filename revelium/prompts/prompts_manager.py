@@ -13,6 +13,7 @@ from revelium.schemas.llm import LLMClassificationResult
 from revelium.providers.llm.llm_client import LLMClient
 from revelium.utils import  paginated_read, paginated_read_until_empty
 from revelium.tokens import embedding_token_cost
+from revelium.errors import ReveliumError, ErrorCode
 
 class PromptsManager():
     CLUSTER_TYPE = "cluster"
@@ -41,6 +42,9 @@ class PromptsManager():
     def update_prompts(self, assignments: Assignments, merges: ClusterMerges) -> None:
         prompt_ids = [str(k) for k in assignments.keys()]
         metadatas = self.get_prompts_metadata(prompt_ids)
+        if not metadatas:
+            raise ReveliumError("No matching prompts found", code=ErrorCode.PROMPT_NOT_FOUND)
+        
         updated_at = datetime.now().isoformat()
         updated_prompts: list[ItemEmbedding] = []
 

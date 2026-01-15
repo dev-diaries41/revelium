@@ -11,6 +11,7 @@ from dataclasses import asdict
 
 from smartscan.processor.metrics import MetricsSuccess
 
+from revelium.errors import ReveliumError, ErrorCode
 from revelium.schemas.llm import LLMClientConfig
 from revelium.prompts.types import Prompt
 from revelium.prompts.prompts_manager import PromptsManager
@@ -128,7 +129,13 @@ async def get_prompts_overview():
 
 @app.patch(Routes.BASE_PROMPTS_ENDPOINT)
 async def update_prompt_cluster(prompt_id: str, cluster_id: str):
-    await run_in_threadpool( prompts_manager.update_prompts , {prompt_id : cluster_id}, {})
+    try:
+        await run_in_threadpool( prompts_manager.update_prompts , {prompt_id : cluster_id}, {})
+    except ReveliumError as e:
+        if e.code == ErrorCode.PROMPT_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="Prompt not found")
+        else:
+            raise e
     return JSONResponse(UpdatePromptClusterIdResponse(updated_cluster_id=cluster_id).model_dump())
 
 

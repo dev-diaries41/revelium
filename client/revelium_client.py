@@ -65,9 +65,9 @@ class ReveliumClient:
         url = f"{self.base_url}{Routes.BASE_PROMPTS_ENDPOINT}"
         payload = UpdatePromptClusterIdParams(prompt_id=prompt_id, cluster_id=cluster_id)
         async with httpx.AsyncClient() as client:
-            res = await client.patch(url, params=payload)
+            res = await client.patch(url, params=payload.model_dump())
             res.raise_for_status() 
-            return res.json()
+            return res.json().get("updated_cluster_id")
 
 
     ## NOTE: May have to queue and return job id
