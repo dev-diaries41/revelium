@@ -185,4 +185,4 @@ async def get_cluster_accuracy():
 @app.get(Routes.GET_CLUSTER_PLOT_ENDPOINT)
 async def get_clusters_plot():
     img_bytes = await run_in_threadpool(get_cluster_plot, prompts_manager)
-    return Response(content=img_bytes, media_type="image/png")
+    return Response(status_code=200 if img_bytes else 204, content=img_bytes, media_type="image/png")

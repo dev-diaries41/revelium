@@ -127,7 +127,7 @@ class ReveliumClient:
             res.raise_for_status() 
             return res.json().get("accuracy")
         
-    async def get_cluster_plot(self) -> bytes:
+    async def get_cluster_plot(self) -> Optional[bytes]:
         """
         Fetches the cluster plot image as PNG bytes.
         """
@@ -136,5 +136,9 @@ class ReveliumClient:
 
         async with httpx.AsyncClient() as client:
             res = await client.get(url)
+            print(res.status_code)
+            if res.status_code == 204:
+                return None
+
             res.raise_for_status()
             return res.content 
