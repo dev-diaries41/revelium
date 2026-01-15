@@ -31,7 +31,7 @@ class PromptsManager():
 
     def label_prompts(self, cluster_id: str, sample_size: int) -> LLMClassificationResult:
         if not self._has_llm_client():
-            raise ValueError("No LLM client exists")
+            raise ReveliumError("No LLM client exists", code=ErrorCode.MISSING_LLM_CLIENT)
         existing_labels = self.get_existing_labels()
         prompts = self.prompt_embedding_store.get(filter={"cluster_id": cluster_id},  limit=sample_size, include=['documents'])
         sample_prompts = [content for content in prompts.datas]
